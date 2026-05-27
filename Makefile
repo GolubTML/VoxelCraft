@@ -1,6 +1,6 @@
 LIBS = -lglfw -ldl -lvulkan
 CXX = clang++
-CXXFLAGS = -std=c++17 -Wall
+CXXFLAGS = -std=c++17 -Wall -Iinclude
 
 SRC_DIR = src
 OBJ_DIR = obj
@@ -23,7 +23,7 @@ $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) $(LIBS) -o $(TARGET)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
