@@ -5,6 +5,43 @@
 
 void Pipeline::create(SwapChain& swapchain, VkDevice device, VkRenderPass renderPass, const std::string& vertPath, const std::string& fragPath)
 {
+    createDescriptorSetLayout(device);
+    createPipeline(swapchain, device, renderPass, vertPath, fragPath);
+}
+
+void Pipeline::cleanup(VkDevice device)
+{
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+    
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+}
+
+void Pipeline::createDescriptorSetLayout(VkDevice device)
+{
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    // so, we need it for uniform buffer
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.pImmutableSamplers = nullptr; 
+
+    // create info as usual
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    // and create
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot create description set layout!");
+    }
+}
+
+void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPass renderPass, const std::string& vertPath, const std::string& fragPath)
+{
     Shader vertexShader("shaders/vert.spv", device, VK_SHADER_STAGE_VERTEX_BIT);
     Shader fragmentShader("shaders/frag.spv", device, VK_SHADER_STAGE_FRAGMENT_BIT);
 
@@ -72,7 +109,7 @@ void Pipeline::create(SwapChain& swapchain, VkDevice device, VkRenderPass render
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     // this things used for shadow mapping?
     rasterizer.depthBiasConstantFactor = 0.0f;
@@ -117,8 +154,8 @@ void Pipeline::create(SwapChain& swapchain, VkDevice device, VkRenderPass render
     // Creating pipeline layout
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0; 
-    pipelineLayoutInfo.pSetLayouts = nullptr; 
+    pipelineLayoutInfo.setLayoutCount = 1; // 1, because we will cast description layout
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // and now, we need to set descriptor layout here 
     pipelineLayoutInfo.pushConstantRangeCount = 0; 
     pipelineLayoutInfo.pPushConstantRanges = nullptr; 
 
@@ -156,10 +193,4 @@ void Pipeline::create(SwapChain& swapchain, VkDevice device, VkRenderPass render
 
     vertexShader.cleanup(device);
     fragmentShader.cleanup(device);
-}
-
-void Pipeline::cleanup(VkDevice device)
-{
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
 }

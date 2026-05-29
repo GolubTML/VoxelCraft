@@ -33,6 +33,7 @@ private:
     Pipeline pipeline;
     // buffer
     Buffer vertBuffer;
+    Buffer indexBuffer;
 
     void initWindow();
     void initVulkan();

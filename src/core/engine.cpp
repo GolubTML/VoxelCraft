@@ -1,17 +1,28 @@
 #include <core/engine.hpp>
 #include <stdexcept>
+#include <iostream>
 
 const uint32_t WINDOW_WIDTH = 800;
 const uint32_t WINDOW_HEIGHT = 600;
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.f}, {1.f, 0.f, 0.f}},
-    {{ 0.5f, -0.5f, 0.f}, {0.f, 1.f, 0.f}},
-    {{ 0.5f,  0.5f, 0.f}, {0.f, 0.f, 1.f}},
+    {{-0.5f, -0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
+    {{ 0.5f, -0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
+    {{ 0.5f,  0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
+    {{-0.5f,  0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
+    {{-0.5f, -0.5f, -0.5f}, {0.4f, 1.f, 0.1f}},
+    {{ 0.5f, -0.5f, -0.5f}, {0.4f, 1.f, 0.1f}},
+    {{ 0.5f,  0.5f, -0.5f}, {0.4f, 1.f, 0.1f}},
+    {{-0.5f,  0.5f, -0.5f}, {0.4f, 1.f, 0.1f}} 
+};
 
-    {{ 0.5f,  0.5f, 0.f}, {0.f, 0.f, 1.f}},
-    {{-0.5f,  0.5f, 0.f}, {1.f, 1.f, 0.f}},
-    {{-0.5f, -0.5f, 0.f}, {1.f, 0.f, 0.f}},
+const std::vector<uint32_t> indices = {
+    0, 1, 2, 2, 3, 0, 
+    4, 5, 6, 6, 7, 4, 
+    4, 0, 3, 3, 7, 4, 
+    1, 5, 6, 6, 2, 1, 
+    3, 2, 6, 6, 7, 3, 
+    4, 5, 1, 1, 0, 4  
 };
 
 void Engine::run()
@@ -40,12 +51,16 @@ void Engine::initVulkan()
     device.init(instance, surface);
     swapchain.create(device, surface, window);
     renderer.init(device, surface, &swapchain);
+    std::cout << "Created" << "\n";
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
+    renderer.createDescriptorSet(pipeline);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
 
-    VkDeviceSize bufferSize =sizeof(Vertex) * vertices.size();
-
+    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
     vertBuffer.create(device.getPhysicalDevice(), device.getDevice(), bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data());
+
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+    indexBuffer.create(device.getPhysicalDevice(), device.getDevice(), indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices.data());
 }
 
 void Engine::createSurface()
@@ -61,7 +76,7 @@ void Engine::mainLoop()
     while (!glfwWindowShouldClose(window)) 
     {
         glfwPollEvents();
-        renderer.presentFrame(pipeline, vertBuffer, vertices);
+        renderer.presentFrame(pipeline, vertBuffer, vertices, indexBuffer, indices);
     }
 
     vkDeviceWaitIdle(device.getDevice());
@@ -73,6 +88,7 @@ void Engine::cleanup()
 
     renderer.cleanup(device.getDevice());
     vertBuffer.cleanup(device.getDevice());
+    indexBuffer.cleanup(device.getDevice());
     swapchain.cleanup(device.getDevice());
     pipeline.cleanup(device.getDevice());
 

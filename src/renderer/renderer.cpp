@@ -2,8 +2,15 @@
 #include <core/swapchain.hpp>
 #include <core/pipeline.hpp>
 #include <core/device.hpp>
-#include <core/buffer.hpp>
+#include <renderer/types.hpp>
 #include <stdexcept>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <chrono>
+#include <cstring>
+#include <iostream>
 
 void Renderer::init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain)
 {
@@ -11,10 +18,19 @@ void Renderer::init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain)
     this->swapchain = swapchain;
 
     createQueues(device, surface);
+    std::cout << "Created!" << "\n";
     createSyncObjects();
+    std::cout << "Created!" << "\n";
     createRenderPass();
+    std::cout << "Created!" << "\n";
     createCommandPool(device, surface);
+    std::cout << "Created!" << "\n";
     createCommandBuffers();
+    std::cout << "Created!" << "\n";
+    createUniformBuffers(device);
+    std::cout << "Created!" << "\n";
+    createDescriptorPool();
+    std::cout << "Created!" << "\n";
 }
 
 void Renderer::cleanup(VkDevice device)
@@ -26,19 +42,26 @@ void Renderer::cleanup(VkDevice device)
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(device, inFlightFences[i], nullptr);
+
+        uniformBuffers[i].cleanup(device);
     }
+
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     vkDestroyRenderPass(device, renderPass, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices)
+void Renderer::presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices,
+    const Buffer& indexBuffer, const std::vector<uint32_t>& indices)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     // after wait, we need to reset fence
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+    updateUniformBuffer();
 
     // let's get image index
     uint32_t imageIndex = 0;
@@ -47,7 +70,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, 
     // and now, we can record commands in buffer
     // but, we need to reset whole buffer
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, vertBuffer, vertices);
+    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, vertBuffer, vertices, indexBuffer, indices);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -100,6 +123,123 @@ const std::vector<VkCommandBuffer>& Renderer::getCommandBuffers() const
     return commandBuffers;
 }
 
+void Renderer::createDescriptorPool()
+{
+    // firstly, we need pool size
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    // and now, create info as usual
+    VkDescriptorPoolCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    createInfo.poolSizeCount = 1;
+    createInfo.pPoolSizes = &poolSize;
+    createInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    // and now create
+    if (vkCreateDescriptorPool(device, &createInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot create descriptor pool!");
+    }
+
+    std::cout << "Created!" << "\n";
+}
+
+void Renderer::createDescriptorSet(const Pipeline& pipeline)
+{
+    // creating layouts
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, pipeline.descriptorSetLayout);
+    // allocate info now
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    // and allocate it
+    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot allocate description set!");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i].buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pImageInfo = nullptr; 
+        descriptorWrite.pTexelBufferView = nullptr; 
+
+        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    }
+
+    std::cout << "Created!" << "\n";
+}
+
+void Renderer::createUniformBuffers(Device& cDevice)
+{
+    // firstly, buffer size
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    // resize all vectors
+    uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+    {
+        uniformBuffers[i].create(cDevice.getPhysicalDevice(), device, 
+            bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, nullptr);
+            
+        
+        // and map to memory
+        VkResult res = vkMapMemory(device,
+            uniformBuffers[i].memory,
+            0, bufferSize, 0,
+            &uniformBuffersMapped[i]);
+
+        if (res != VK_SUCCESS)
+        {
+            throw std::runtime_error("vkMapMemory failed!");
+        }
+    }
+}   
+
+void Renderer::updateUniformBuffer()
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    // and here, basic UBO object will created
+    UniformBufferObject ubo{};
+    // rotate with time 
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    // viwe
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.f), glm::vec3(0.f, 0.f, 1.f));
+    // and projection
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapchain->swapChainExtent.width / (float) swapchain->swapChainExtent.height, 0.1f, 10.0f);
+
+    // and we need to invert positions, because in vulkan Y is upside down
+    ubo.proj[1][1] *= -1;
+
+    // and now, we can copy data to uniform buffer
+    memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
+}
+
+
 void Renderer::createQueues(Device& device, VkSurfaceKHR surface)
 {
     // idk, is this good idea or not
@@ -146,7 +286,7 @@ void Renderer::createRenderPass()
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
@@ -204,7 +344,9 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices)
+void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
+    const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices, 
+    const Buffer& indexBuffer, const std::vector<uint32_t>& indices)
 {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -235,6 +377,8 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
 
     vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
 
+    vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
     // let's get view port
     VkViewport viewport{};
     viewport.x = 0.f;
@@ -251,12 +395,15 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
     scissor.extent = swapchain->swapChainExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
+    // vertex buffer
     VkBuffer vertexBuffers[] = {vertBuffer.buffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
+    // and index
+    vkCmdBindIndexBuffer(buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     // now, we are ready to draw
-    vkCmdDraw(buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+    vkCmdDrawIndexed(buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
     // and finish
     vkCmdEndRenderPass(buffer);

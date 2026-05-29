@@ -2,13 +2,13 @@
 
 #include <vulkan/vulkan.h>
 #include <renderer/mesh.hpp>
+#include <core/buffer.hpp>
 #include <vector>
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 class SwapChain;
 class Pipeline;
-class Buffer;
 class Device;
 
 class Renderer
@@ -16,8 +16,12 @@ class Renderer
 public:
     void init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain);
     void cleanup(VkDevice device);
+    
+    // BAD. Need new architecture for this
+    void createDescriptorSet(const Pipeline& pipeline);
 
-    void presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices);
+    void presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices,
+        const Buffer& indexBuffer, const std::vector<uint32_t>& indices);
 
     VkRenderPass getRenderPass() const;
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
@@ -36,13 +40,28 @@ private:
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
+
+    std::vector<Buffer> uniformBuffers;
+    std::vector<void*> uniformBuffersMapped;
+
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
     
     uint32_t currentFrame = 0;
 
+    // descriptors
+    void createDescriptorPool();
+    // buffers
+    void createUniformBuffers(Device& cDevice);
+    void updateUniformBuffer();
+    // queues
     void createQueues(Device& device, VkSurfaceKHR surface);
+    // render
     void createSyncObjects();
     void createRenderPass();
     void createCommandPool(Device& device, VkSurfaceKHR surface);
     void createCommandBuffers();
-    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices);
+    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
+        const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices, 
+        const Buffer& indexBuffer, const std::vector<uint32_t>& indices);
 };
