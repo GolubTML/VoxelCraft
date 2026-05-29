@@ -33,10 +33,10 @@ SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurface
 
 // Swap chain
 
-void SwapChain::create(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, GLFWwindow* window)
+void SwapChain::create(Device& device, VkSurfaceKHR surface, GLFWwindow* window)
 {
-    createSwapchain(physicalDevice, device, surface, window);
-    createImageViews(device);
+    createSwapchain(device, surface, window);
+    createImageViews(device.getDevice());
 }
 
 void SwapChain::cleanup(VkDevice device)
@@ -50,9 +50,9 @@ void SwapChain::cleanup(VkDevice device)
     vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
-void SwapChain::createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, GLFWwindow* window)
+void SwapChain::createSwapchain(Device& device, VkSurfaceKHR surface, GLFWwindow* window)
 {
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice, surface);
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device.getPhysicalDevice(), surface);
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -80,7 +80,7 @@ void SwapChain::createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
+    QueueFamilyIndices indices = device.getIndices();
     uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     if (indices.graphicsFamily != indices.presentFamily)
@@ -102,14 +102,14 @@ void SwapChain::createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) 
+    if (vkCreateSwapchainKHR(device.getDevice(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) 
     {
         throw std::runtime_error("failed to create swap chain!");
     }
 
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    vkGetSwapchainImagesKHR(device.getDevice(), swapChain, &imageCount, nullptr);
     swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+    vkGetSwapchainImagesKHR(device.getDevice(), swapChain, &imageCount, swapChainImages.data());
 }
 
 void SwapChain::createImageViews(VkDevice device)

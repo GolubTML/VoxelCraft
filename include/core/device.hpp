@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <cstdint>
+#include <vector>
 #include <vulkan/vulkan.h>
 
 struct QueueFamilyIndices 
@@ -11,8 +12,30 @@ struct QueueFamilyIndices
 
     bool isComplete()
     {
-        return graphicsFamily.has_value() && presentFamily;
+        return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
 
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+class Device
+{
+public:
+    void init(VkInstance instance, VkSurfaceKHR surface);
+    void cleanup();
+
+    VkDevice getDevice() const;
+    VkPhysicalDevice getPhysicalDevice() const;
+    QueueFamilyIndices getIndices() const;
+
+private:
+    std::vector<const char*> deviceExtensions;
+
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkDevice device;
+    QueueFamilyIndices indices;
+
+    void pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surfac);
+    void createLogicalDevice(VkSurfaceKHR surface);
+    bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface);
+    bool chechDeviceExtensionSuppot(VkPhysicalDevice device);
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+};

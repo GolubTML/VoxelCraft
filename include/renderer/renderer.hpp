@@ -9,11 +9,12 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 class SwapChain;
 class Pipeline;
 class Buffer;
+class Device;
 
 class Renderer
 {
 public:
-    void init(VkDevice device, VkPhysicalDevice pDevice, VkSurfaceKHR surface, SwapChain* swapchain);
+    void init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain);
     void cleanup(VkDevice device);
 
     void presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices);
@@ -38,10 +39,10 @@ private:
     
     uint32_t currentFrame = 0;
 
-    void createQueues(VkPhysicalDevice pDevice, VkSurfaceKHR surface);
+    void createQueues(Device& device, VkSurfaceKHR surface);
     void createSyncObjects();
     void createRenderPass();
-    void createCommandPool(VkPhysicalDevice pDevice, VkSurfaceKHR surface);
+    void createCommandPool(Device& device, VkSurfaceKHR surface);
     void createCommandBuffers();
     void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices);
 };

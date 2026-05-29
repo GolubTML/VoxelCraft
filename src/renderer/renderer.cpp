@@ -5,15 +5,15 @@
 #include <core/buffer.hpp>
 #include <stdexcept>
 
-void Renderer::init(VkDevice device, VkPhysicalDevice pDevice, VkSurfaceKHR surface, SwapChain* swapchain)
+void Renderer::init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain)
 {
-    this->device = device;
+    this->device = device.getDevice();
     this->swapchain = swapchain;
 
-    createQueues(pDevice, surface);
+    createQueues(device, surface);
     createSyncObjects();
     createRenderPass();
-    createCommandPool(pDevice, surface);
+    createCommandPool(device, surface);
     createCommandBuffers();
 }
 
@@ -100,13 +100,13 @@ const std::vector<VkCommandBuffer>& Renderer::getCommandBuffers() const
     return commandBuffers;
 }
 
-void Renderer::createQueues(VkPhysicalDevice pDevice, VkSurfaceKHR surface)
+void Renderer::createQueues(Device& device, VkSurfaceKHR surface)
 {
     // idk, is this good idea or not
-    QueueFamilyIndices indices = findQueueFamilies(pDevice, surface);
+    QueueFamilyIndices indices = device.getIndices();
 
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+    vkGetDeviceQueue(device.getDevice(), indices.graphicsFamily.value(), 0, &graphicsQueue);
+    vkGetDeviceQueue(device.getDevice(), indices.presentFamily.value(), 0, &presentQueue);
 }
 
 void Renderer::createSyncObjects()
@@ -170,9 +170,9 @@ void Renderer::createRenderPass()
     }
 }
 
-void Renderer::createCommandPool(VkPhysicalDevice pDevice, VkSurfaceKHR surface)
+void Renderer::createCommandPool(Device& device, VkSurfaceKHR surface)
 {
-    QueueFamilyIndices indices = findQueueFamilies(pDevice, surface);
+    QueueFamilyIndices indices = device.getIndices();
 
     VkCommandPoolCreateInfo commandPoolInfo{};
     commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -180,7 +180,7 @@ void Renderer::createCommandPool(VkPhysicalDevice pDevice, VkSurfaceKHR surface)
     commandPoolInfo.queueFamilyIndex = indices.graphicsFamily.value();
     // this all for command pool, ebat
 
-    if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
+    if (vkCreateCommandPool(device.getDevice(), &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
     {
         throw std::runtime_error("Cannot create command pool!");
     }

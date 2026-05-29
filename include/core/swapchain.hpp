@@ -14,6 +14,8 @@ struct SwapChainSupportDetails
 
 SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 
+class Device;
+
 class SwapChain
 {
 public:
@@ -26,7 +28,7 @@ public:
     VkExtent2D swapChainExtent;
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
-    void create(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, GLFWwindow* window);
+    void create(Device& device, VkSurfaceKHR surface, GLFWwindow* window);
     void cleanup(VkDevice device);
     
     // we cannot put this method in create, because we will have crush
@@ -34,7 +36,7 @@ public:
     void createFramebuffers(VkDevice device, VkRenderPass renderPass);
 
 private:
-    void createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, GLFWwindow* window);
+    void createSwapchain(Device& device, VkSurfaceKHR surface, GLFWwindow* window);
     void createImageViews(VkDevice device);
 
     // helpers
