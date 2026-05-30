@@ -13,6 +13,8 @@
 #include <renderer/renderer.hpp>
 #include <core/debugger.hpp>
 #include <renderer/mesh.hpp>
+#include <core/camera.hpp>
+#include <memory>
 
 class Engine
 {
@@ -27,11 +29,14 @@ private:
     Device device;
     // Window surface
     VkSurfaceKHR surface;
-
+    // swapchain
     SwapChain swapchain;
+    // camera
+    Camera mainCamera;
     // Pipeline
     Renderer renderer;
     Pipeline pipeline;
+    // mesh
     Mesh testMesh;
 
     void initWindow();

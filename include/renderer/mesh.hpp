@@ -26,6 +26,4 @@ public:
     Buffer indexBuffer;
 
     uint32_t indexCount;
-};
-
-class MeshMaker { }; // we will need this
+}; 

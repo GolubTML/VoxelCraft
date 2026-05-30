@@ -2,6 +2,7 @@
 #include <core/swapchain.hpp>
 #include <core/pipeline.hpp>
 #include <core/device.hpp>
+#include <core/camera.hpp>
 #include <renderer/types.hpp>
 #include <stdexcept>
 
@@ -45,7 +46,7 @@ void Renderer::cleanup(VkDevice device)
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, Mesh& mesh)
+void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, Mesh& mesh)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -53,7 +54,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, Mesh& mesh)
     // after wait, we need to reset fence
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-    updateUniformBuffer();
+    updateUniformBuffer(camera);
 
     // let's get image index
     uint32_t imageIndex = 0;
@@ -204,7 +205,7 @@ void Renderer::createUniformBuffers(Device& cDevice)
     }
 }   
 
-void Renderer::updateUniformBuffer()
+void Renderer::updateUniformBuffer(const Camera& camera)
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -216,9 +217,9 @@ void Renderer::updateUniformBuffer()
     // rotate with time 
     ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     // viwe
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.f), glm::vec3(0.f, 0.f, 1.f));
+    ubo.view = camera.getCameraView();
     // and projection
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapchain->swapChainExtent.width / (float) swapchain->swapChainExtent.height, 0.1f, 10.0f);
+    ubo.proj = camera.getCameraProjection();
 
     // and we need to invert positions, because in vulkan Y is upside down
     ubo.proj[1][1] *= -1;
@@ -274,7 +275,7 @@ void Renderer::createRenderPass()
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;

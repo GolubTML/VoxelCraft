@@ -49,16 +49,13 @@ void Engine::initVulkan()
     Debug::setupDebugMessenger(instance, &debugMessenger);
     createSurface();
     device.init(instance, surface);
-
     swapchain.create(device, surface, window);
+    mainCamera = Camera(glm::vec3(2.f), 45.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
     renderer.init(device, surface, &swapchain);
 
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
-    
     renderer.createDescriptorSet(pipeline);
-    
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
-
     testMesh.create(device, vertices, indices);
 }
 
@@ -75,7 +72,7 @@ void Engine::mainLoop()
     while (!glfwWindowShouldClose(window)) 
     {
         glfwPollEvents();
-        renderer.presentFrame(pipeline, testMesh);
+        renderer.presentFrame(pipeline, mainCamera, testMesh);
     }
 
     vkDeviceWaitIdle(device.getDevice());
