@@ -18,19 +18,12 @@ void Renderer::init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain)
     this->swapchain = swapchain;
 
     createQueues(device, surface);
-    std::cout << "Created!" << "\n";
     createSyncObjects();
-    std::cout << "Created!" << "\n";
     createRenderPass();
-    std::cout << "Created!" << "\n";
     createCommandPool(device, surface);
-    std::cout << "Created!" << "\n";
     createCommandBuffers();
-    std::cout << "Created!" << "\n";
     createUniformBuffers(device);
-    std::cout << "Created!" << "\n";
     createDescriptorPool();
-    std::cout << "Created!" << "\n";
 }
 
 void Renderer::cleanup(VkDevice device)
@@ -52,8 +45,7 @@ void Renderer::cleanup(VkDevice device)
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices,
-    const Buffer& indexBuffer, const std::vector<uint32_t>& indices)
+void Renderer::presentFrame(const Pipeline& pipeline, Mesh& mesh)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -70,7 +62,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, 
     // and now, we can record commands in buffer
     // but, we need to reset whole buffer
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, vertBuffer, vertices, indexBuffer, indices);
+    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, mesh);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -142,8 +134,6 @@ void Renderer::createDescriptorPool()
     {
         throw std::runtime_error("Cannot create descriptor pool!");
     }
-
-    std::cout << "Created!" << "\n";
 }
 
 void Renderer::createDescriptorSet(const Pipeline& pipeline)
@@ -184,8 +174,6 @@ void Renderer::createDescriptorSet(const Pipeline& pipeline)
 
         vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
     }
-
-    std::cout << "Created!" << "\n";
 }
 
 void Renderer::createUniformBuffers(Device& cDevice)
@@ -344,9 +332,7 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
-    const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices, 
-    const Buffer& indexBuffer, const std::vector<uint32_t>& indices)
+void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, Mesh& mesh)
 {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -396,14 +382,14 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex,
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
     // vertex buffer
-    VkBuffer vertexBuffers[] = {vertBuffer.buffer};
+    VkBuffer vertexBuffers[] = {mesh.vertexBuffer.buffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
     // and index
-    vkCmdBindIndexBuffer(buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(buffer, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     // now, we are ready to draw
-    vkCmdDrawIndexed(buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(buffer, static_cast<uint32_t>(mesh.indexCount), 1, 0, 0, 0);
 
     // and finish
     vkCmdEndRenderPass(buffer);

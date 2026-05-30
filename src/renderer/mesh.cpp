@@ -1,4 +1,5 @@
 #include <renderer/mesh.hpp>
+#include <core/device.hpp>
 
 VkVertexInputBindingDescription Vertex::getBindingDescription()
 {
@@ -29,4 +30,21 @@ std::array<VkVertexInputAttributeDescription, 2> Vertex::getAttributeDescription
     attributeDescription[1].offset = offsetof(Vertex, color);
 
     return attributeDescription;
+}
+
+void Mesh::create(Device& device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+{
+    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+    vertexBuffer.create(device.getPhysicalDevice(), device.getDevice(), bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data());
+
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+    indexBuffer.create(device.getPhysicalDevice(), device.getDevice(), indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices.data());
+
+    indexCount = indices.size();
+}
+
+void Mesh::cleanup(VkDevice device)
+{
+    vertexBuffer.cleanup(device);
+    indexBuffer.cleanup(device);
 }

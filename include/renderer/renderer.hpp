@@ -10,6 +10,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 class SwapChain;
 class Pipeline;
 class Device;
+class Mesh;
 
 class Renderer
 {
@@ -20,8 +21,7 @@ public:
     // BAD. Need new architecture for this
     void createDescriptorSet(const Pipeline& pipeline);
 
-    void presentFrame(const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices,
-        const Buffer& indexBuffer, const std::vector<uint32_t>& indices);
+    void presentFrame(const Pipeline& pipeline, Mesh& mesh);
 
     VkRenderPass getRenderPass() const;
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
@@ -61,7 +61,5 @@ private:
     void createRenderPass();
     void createCommandPool(Device& device, VkSurfaceKHR surface);
     void createCommandBuffers();
-    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
-        const Pipeline& pipeline, const Buffer& vertBuffer, const std::vector<Vertex>& vertices, 
-        const Buffer& indexBuffer, const std::vector<uint32_t>& indices);
+    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, Mesh& mesh);
 };

@@ -12,6 +12,7 @@
 #include <core/pipeline.hpp>
 #include <renderer/renderer.hpp>
 #include <core/debugger.hpp>
+#include <renderer/mesh.hpp>
 
 class Engine
 {
@@ -31,9 +32,7 @@ private:
     // Pipeline
     Renderer renderer;
     Pipeline pipeline;
-    // buffer
-    Buffer vertBuffer;
-    Buffer indexBuffer;
+    Mesh testMesh;
 
     void initWindow();
     void initVulkan();

@@ -49,18 +49,17 @@ void Engine::initVulkan()
     Debug::setupDebugMessenger(instance, &debugMessenger);
     createSurface();
     device.init(instance, surface);
+
     swapchain.create(device, surface, window);
     renderer.init(device, surface, &swapchain);
-    std::cout << "Created" << "\n";
+
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
+    
     renderer.createDescriptorSet(pipeline);
+    
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
 
-    VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
-    vertBuffer.create(device.getPhysicalDevice(), device.getDevice(), bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data());
-
-    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
-    indexBuffer.create(device.getPhysicalDevice(), device.getDevice(), indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices.data());
+    testMesh.create(device, vertices, indices);
 }
 
 void Engine::createSurface()
@@ -76,7 +75,7 @@ void Engine::mainLoop()
     while (!glfwWindowShouldClose(window)) 
     {
         glfwPollEvents();
-        renderer.presentFrame(pipeline, vertBuffer, vertices, indexBuffer, indices);
+        renderer.presentFrame(pipeline, testMesh);
     }
 
     vkDeviceWaitIdle(device.getDevice());
@@ -87,8 +86,7 @@ void Engine::cleanup()
     Debug::destroyDebugMessenger(instance, debugMessenger);
 
     renderer.cleanup(device.getDevice());
-    vertBuffer.cleanup(device.getDevice());
-    indexBuffer.cleanup(device.getDevice());
+    testMesh.cleanup(device.getDevice());
     swapchain.cleanup(device.getDevice());
     pipeline.cleanup(device.getDevice());
 
