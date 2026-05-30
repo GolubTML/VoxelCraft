@@ -1,6 +1,6 @@
 LIBS = -lglfw -ldl -lvulkan
 CXX = clang++
-CXXFLAGS = -std=c++17 -Wall -Iinclude
+CXXFLAGS = -std=c++17 -Wall -Iinclude -MMD -MP
 
 SRC_DIR = src
 OBJ_DIR = obj
@@ -20,7 +20,7 @@ release: CXXFLAGS += -O3 -DNDEBUG
 release: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(OBJS) $(LIBS) -o $(TARGET)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LIBS) -o $(TARGET)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
@@ -37,3 +37,5 @@ run: all
 	./$(TARGET)
 
 .PHONY: all debug release clean run
+
+-include $(OBJS:.o=.d)

@@ -39,6 +39,8 @@ private:
     // mesh
     Mesh testMesh;
 
+    float lastTime = 0.f;
+
     void initWindow();
     void initVulkan();
     void createSurface(); // idk where put it

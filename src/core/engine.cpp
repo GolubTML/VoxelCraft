@@ -2,8 +2,8 @@
 #include <stdexcept>
 #include <iostream>
 
-const uint32_t WINDOW_WIDTH = 800;
-const uint32_t WINDOW_HEIGHT = 600;
+const uint32_t WINDOW_WIDTH = 1200;
+const uint32_t WINDOW_HEIGHT = 900;
 
 const std::vector<Vertex> vertices = {
     {{-0.5f, -0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
@@ -24,6 +24,14 @@ const std::vector<uint32_t> indices = {
     3, 2, 6, 6, 7, 3, 
     4, 5, 1, 1, 0, 4  
 };
+
+static void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    auto* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+
+    if (camera)
+        camera->mouse_callback(window, xpos, ypos);
+}
 
 void Engine::run()
 {
@@ -50,7 +58,11 @@ void Engine::initVulkan()
     createSurface();
     device.init(instance, surface);
     swapchain.create(device, surface, window);
-    mainCamera = Camera(glm::vec3(2.f), 45.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+    mainCamera = Camera(glm::vec3(0.f, 0.f, 2.f), 45.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+
+    glfwSetWindowUserPointer(window, &mainCamera);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
     renderer.init(device, surface, &swapchain);
 
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
@@ -71,7 +83,14 @@ void Engine::mainLoop()
 {
     while (!glfwWindowShouldClose(window)) 
     {
+        float currentTime = glfwGetTime();
+        float deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        
         glfwPollEvents();
+
+        mainCamera.move(window, deltaTime);
+
         renderer.presentFrame(pipeline, mainCamera, testMesh);
     }
 
