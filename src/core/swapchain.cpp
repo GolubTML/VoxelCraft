@@ -125,7 +125,7 @@ void SwapChain::createImageViews(VkDevice device)
     for (size_t i = 0; i < swapChainImages.size(); ++i)
     {
         // creating images view
-        swapChainImageViews[i] = vkUtils::createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+        swapChainImageViews[i] = vkUtils::createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 }
 
@@ -201,7 +201,7 @@ void SwapChain::createDepthResources(Device& device)
     vkBindImageMemory(device.getDevice(), depthImage, depthImageMemory, 0);
 
     // And now we need Image view for it
-    depthImageView = vkUtils::createImageView(device.getDevice(), depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    depthImageView = vkUtils::createImageView(device.getDevice(), depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
 
 VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)

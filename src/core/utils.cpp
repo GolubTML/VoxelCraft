@@ -20,7 +20,7 @@ namespace vkUtils
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
-    VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect)
+    VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspect, uint32_t mipLevels)
     {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -29,16 +29,16 @@ namespace vkUtils
         viewInfo.format = format;
         viewInfo.subresourceRange.aspectMask = aspect;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.levelCount = mipLevels;
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 1;
-    
+
         VkImageView imageView;
         if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) 
         {
             throw std::runtime_error("failed to create image view!");
         }
-    
+
         return imageView;
     }
 }
