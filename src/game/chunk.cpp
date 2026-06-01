@@ -38,45 +38,45 @@ void Chunk::createMesh(Device& device)
         switch (face)
         {
         case BlockFace::TOP:
-            vertices.push_back({pos + glm::vec3(0,1,0), {1,0,0}});
-            vertices.push_back({pos + glm::vec3(1,1,0), {1,0,0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), {1,0,0}});
-            vertices.push_back({pos + glm::vec3(0,1,1), {1,0,0}});
+            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {1, 0}});
+            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {0, 0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {0, 1}});
+            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {1, 1}});
 
             break;
         case BlockFace::BOTTOM:
-            vertices.push_back({pos + glm::vec3(0,0,0), {0,1,0}});
-            vertices.push_back({pos + glm::vec3(1,0,0), {0,1,0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), {0,1,0}});
-            vertices.push_back({pos + glm::vec3(0,0,1), {0,1,0}});
+            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {1, 0}});
+            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {0, 0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {0, 1}});
+            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {1, 1}});
 
             break;
         case BlockFace::FRONT:
-            vertices.push_back({pos + glm::vec3(0,0,1), {0,0,1}});
-            vertices.push_back({pos + glm::vec3(1,0,1), {0,0,1}});
-            vertices.push_back({pos + glm::vec3(1,1,1), {0,0,1}});
-            vertices.push_back({pos + glm::vec3(0,1,1), {0,0,1}});
+            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {1, 0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {0, 0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {0, 1}});
+            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {1, 1}});
             
             break;
         case BlockFace::BACK:
-            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,0}});
-            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,0}});
-            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,0}});
-            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,0}});
+            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {1, 0}});
+            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {0, 0}});
+            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {0, 1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {1, 1}});
             
             break;
         case BlockFace::LEFT:
-            vertices.push_back({pos + glm::vec3(0,0,0), {1,0,1}});
-            vertices.push_back({pos + glm::vec3(0,0,1), {1,0,1}});
-            vertices.push_back({pos + glm::vec3(0,1,1), {1,0,1}});
-            vertices.push_back({pos + glm::vec3(0,1,0), {1,0,1}});
+            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {1, 0}});
+            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {0, 0}});
+            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {0, 1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {1, 1}});
 
             break;
         case BlockFace::RIGHT:
-            vertices.push_back({pos + glm::vec3(1,0,0), {0,1,1}});
-            vertices.push_back({pos + glm::vec3(1,0,1), {0,1,1}});
-            vertices.push_back({pos + glm::vec3(1,1,1), {0,1,1}});
-            vertices.push_back({pos + glm::vec3(1,1,0), {0,1,1}});
+            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {1, 0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {0, 0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {0, 1}});
+            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {1, 1}});
 
             break;
         

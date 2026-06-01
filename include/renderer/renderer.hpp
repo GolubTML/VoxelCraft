@@ -13,6 +13,7 @@ class Device;
 class Mesh;
 class Camera;
 class Chunk;
+class Texture2D;
 
 class Renderer
 {
@@ -21,11 +22,14 @@ public:
     void cleanup(VkDevice device);
     
     // BAD. Need new architecture for this
-    void createDescriptorSet(const Pipeline& pipeline);
+    void createDescriptorSet(const Pipeline& pipeline, const Texture2D& texture);
 
     void presentFrame(const Pipeline& pipeline, const Camera& camera, const Chunk& chunk);
 
     VkRenderPass getRenderPass() const;
+    VkQueue getGraphicsQueue() const;
+    VkCommandPool getCommandPool() const;
+
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
 
 private:

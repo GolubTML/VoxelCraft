@@ -10,7 +10,7 @@ class Chunk
 {
 public:
     static constexpr int WIDTH = 16;
-    static constexpr int HEIGHT = 32;
+    static constexpr int HEIGHT = 64;
     static constexpr int LENGTH = 16;
 
     Block blocks[WIDTH][HEIGHT][LENGTH];

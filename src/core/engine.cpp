@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <iostream>
 
+
 const uint32_t WINDOW_WIDTH = 1200;
 const uint32_t WINDOW_HEIGHT = 900;
 
@@ -48,7 +49,10 @@ void Engine::initVulkan()
     renderer.init(device, surface, &swapchain);
 
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
-    renderer.createDescriptorSet(pipeline);
+
+    testTexture.create(device, renderer, "assets/textures/blocks/dirt.png");
+
+    renderer.createDescriptorSet(pipeline, testTexture);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
     testChunk.createChunk(device);
 }
@@ -86,6 +90,8 @@ void Engine::mainLoop()
 void Engine::cleanup() 
 { 
     Debug::destroyDebugMessenger(instance, debugMessenger);
+
+    testTexture.cleanup(device);
 
     renderer.cleanup(device.getDevice());
     testChunk.cleanup(device.getDevice());

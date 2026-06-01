@@ -15,6 +15,7 @@
 #include <renderer/mesh.hpp>
 #include <core/camera.hpp>
 #include <game/chunk.hpp>
+#include <renderer/texture.hpp>
 #include <memory>
 
 class Engine
@@ -39,6 +40,7 @@ private:
     Pipeline pipeline;
     // mesh
     Chunk testChunk;
+    Texture2D testTexture;
 
     float lastTime = 0.f;
 
