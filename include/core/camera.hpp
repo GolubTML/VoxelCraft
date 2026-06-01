@@ -10,7 +10,7 @@ public:
     glm::vec3 front = glm::vec3(0.f, 0.f, 0.f);
     glm::vec3 up = glm::vec3(0.f, 0.f, 0.f);
 
-    float sens = 0.2f;
+    float sens = 0.1f;
     float FOV = 0.f;
     glm::vec2 size = glm::vec2(0.f, 0.f);
 

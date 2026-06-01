@@ -5,26 +5,6 @@
 const uint32_t WINDOW_WIDTH = 1200;
 const uint32_t WINDOW_HEIGHT = 900;
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
-    {{ 0.5f, -0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
-    {{ 0.5f,  0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
-    {{-0.5f,  0.5f,  0.5f}, {0.4f, 1.f, 0.1f}},
-    {{-0.5f, -0.5f, -0.5f}, {0.4f, 1.f, 0.1f}},
-    {{ 0.5f, -0.5f, -0.5f}, {0.4f, 1.f, 0.1f}},
-    {{ 0.5f,  0.5f, -0.5f}, {0.4f, 1.f, 0.1f}},
-    {{-0.5f,  0.5f, -0.5f}, {0.4f, 1.f, 0.1f}} 
-};
-
-const std::vector<uint32_t> indices = {
-    0, 1, 2, 2, 3, 0, 
-    4, 5, 6, 6, 7, 4, 
-    4, 0, 3, 3, 7, 4, 
-    1, 5, 6, 6, 2, 1, 
-    3, 2, 6, 6, 7, 3, 
-    4, 5, 1, 1, 0, 4  
-};
-
 static void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
     auto* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
@@ -49,6 +29,8 @@ void Engine::initWindow()
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "VoxelCraft", nullptr, nullptr);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void Engine::initVulkan()
@@ -58,7 +40,7 @@ void Engine::initVulkan()
     createSurface();
     device.init(instance, surface);
     swapchain.create(device, surface, window);
-    mainCamera = Camera(glm::vec3(0.f, 0.f, 2.f), 45.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+    mainCamera = Camera(glm::vec3(0.f, 0.f, 2.f), 60.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
 
     glfwSetWindowUserPointer(window, &mainCamera);
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -68,7 +50,7 @@ void Engine::initVulkan()
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
     renderer.createDescriptorSet(pipeline);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
-    testMesh.create(device, vertices, indices);
+    testChunk.createChunk(device);
 }
 
 void Engine::createSurface()
@@ -88,10 +70,14 @@ void Engine::mainLoop()
         lastTime = currentTime;
         
         glfwPollEvents();
+    
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+
 
         mainCamera.move(window, deltaTime);
 
-        renderer.presentFrame(pipeline, mainCamera, testMesh);
+        renderer.presentFrame(pipeline, mainCamera, testChunk);
     }
 
     vkDeviceWaitIdle(device.getDevice());
@@ -102,7 +88,7 @@ void Engine::cleanup()
     Debug::destroyDebugMessenger(instance, debugMessenger);
 
     renderer.cleanup(device.getDevice());
-    testMesh.cleanup(device.getDevice());
+    testChunk.cleanup(device.getDevice());
     swapchain.cleanup(device.getDevice());
     pipeline.cleanup(device.getDevice());
 

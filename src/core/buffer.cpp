@@ -1,4 +1,5 @@
 #include <core/buffer.hpp>
+#include <core/utils.hpp>
 #include <stdexcept>
 #include <cstring>
 
@@ -25,7 +26,7 @@ void Buffer::create(VkPhysicalDevice pDevice, VkDevice device, VkDeviceSize buff
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(pDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    allocInfo.memoryTypeIndex = vkUtils::findMemoryType(pDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     // and allocate
     if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
@@ -50,21 +51,4 @@ void Buffer::cleanup(VkDevice device)
 {
     vkDestroyBuffer(device, buffer, nullptr);
     vkFreeMemory(device, memory, nullptr);
-}
-
-uint32_t Buffer::findMemoryType(VkPhysicalDevice pDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
-{
-    // and here, we need memory properties
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(pDevice, &memProperties);
-
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
-    {
-        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-        {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("failed to find suitable memory type!");
 }

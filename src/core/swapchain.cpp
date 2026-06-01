@@ -1,5 +1,6 @@
 #include <core/swapchain.hpp>
 #include <core/device.hpp>
+#include <core/utils.hpp>
 #include <limits>
 #include <algorithm>
 #include <stdexcept>
@@ -37,10 +38,15 @@ void SwapChain::create(Device& device, VkSurfaceKHR surface, GLFWwindow* window)
 {
     createSwapchain(device, surface, window);
     createImageViews(device.getDevice());
+    createDepthResources(device);
 }
 
 void SwapChain::cleanup(VkDevice device)
 {
+    vkDestroyImageView(device, depthImageView, nullptr);
+    vkDestroyImage(device, depthImage, nullptr);
+    vkFreeMemory(device, depthImageMemory, nullptr);
+
     for (auto imageView : swapChainImageViews) 
         vkDestroyImageView(device, imageView, nullptr);
 
@@ -150,12 +156,16 @@ void SwapChain::createFramebuffers(VkDevice device, VkRenderPass renderPass)
 
     for (size_t i = 0; i < swapChainImageViews.size(); ++i)
     {
-        VkImageView attachments[] = { swapChainImageViews[i] };
+        VkImageView attachments[] = 
+        { 
+            swapChainImageViews[i],
+            depthImageView 
+        };
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = renderPass;
-        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.attachmentCount = 2;
         framebufferInfo.width = swapChainExtent.width;
         framebufferInfo.height = swapChainExtent.height;
         framebufferInfo.pAttachments = attachments;
@@ -165,6 +175,67 @@ void SwapChain::createFramebuffers(VkDevice device, VkRenderPass renderPass)
         {
             throw std::runtime_error("Cannot create framebuffer for image view!");
         }
+    }
+}
+
+void SwapChain::createDepthResources(Device& device)
+{
+    // so, we need make image for depth
+
+    // create info 
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = swapChainExtent.width;
+    imageInfo.extent.height = swapChainExtent.height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = depthFormat; 
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    // and create
+    if (vkCreateImage(device.getDevice(), &imageInfo, nullptr, &depthImage) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot create depth image for Z buffer!");
+    }
+
+    // and now, we need to allocate memory for out image
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(device.getDevice(), depthImage, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = vkUtils::findMemoryType(device.getPhysicalDevice(), memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // and allocate
+    if (vkAllocateMemory(device.getDevice(), &allocInfo, nullptr, &depthImageMemory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot allocate memory for depth image!");
+    }
+
+    vkBindImageMemory(device.getDevice(), depthImage, depthImageMemory, 0);
+
+    // And now we need Image view for it
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = depthImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = depthFormat;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT; // ВАЖНО: ТУТ ИМЕННО DEPTH, А НЕ COLOR
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    if (vkCreateImageView(device.getDevice(), &viewInfo, nullptr, &depthImageView) != VK_SUCCESS) 
+    {
+        throw std::runtime_error("failed to create depth image view!");
     }
 }
 

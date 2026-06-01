@@ -12,6 +12,7 @@ class Pipeline;
 class Device;
 class Mesh;
 class Camera;
+class Chunk;
 
 class Renderer
 {
@@ -22,7 +23,7 @@ public:
     // BAD. Need new architecture for this
     void createDescriptorSet(const Pipeline& pipeline);
 
-    void presentFrame(const Pipeline& pipeline, const Camera& camera, Mesh& mesh);
+    void presentFrame(const Pipeline& pipeline, const Camera& camera, const Chunk& chunk);
 
     VkRenderPass getRenderPass() const;
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
@@ -54,7 +55,7 @@ private:
     void createDescriptorPool();
     // buffers
     void createUniformBuffers(Device& cDevice);
-    void updateUniformBuffer(const Camera& camera);
+    void updateUniformBuffer(const Camera& camera, const Chunk& chunk);
     // queues
     void createQueues(Device& device, VkSurfaceKHR surface);
     // render
@@ -62,5 +63,5 @@ private:
     void createRenderPass();
     void createCommandPool(Device& device, VkSurfaceKHR surface);
     void createCommandBuffers();
-    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, Mesh& mesh);
+    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const Mesh& mesh);
 };

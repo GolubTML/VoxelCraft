@@ -14,6 +14,7 @@
 #include <core/debugger.hpp>
 #include <renderer/mesh.hpp>
 #include <core/camera.hpp>
+#include <game/chunk.hpp>
 #include <memory>
 
 class Engine
@@ -37,7 +38,7 @@ private:
     Renderer renderer;
     Pipeline pipeline;
     // mesh
-    Mesh testMesh;
+    Chunk testChunk;
 
     float lastTime = 0.f;
 

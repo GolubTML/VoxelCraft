@@ -28,6 +28,13 @@ public:
     VkExtent2D swapChainExtent;
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
+    // Z buffer
+    VkImage depthImage = VK_NULL_HANDLE;
+    VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
+    VkImageView depthImageView = VK_NULL_HANDLE;
+
+    const VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+
     void create(Device& device, VkSurfaceKHR surface, GLFWwindow* window);
     void cleanup(VkDevice device);
     
@@ -38,6 +45,7 @@ public:
 private:
     void createSwapchain(Device& device, VkSurfaceKHR surface, GLFWwindow* window);
     void createImageViews(VkDevice device);
+    void createDepthResources(Device& device);
 
     // helpers
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
