@@ -50,7 +50,7 @@ void Engine::initVulkan()
 
     pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
 
-    testTexture.create(device, renderer, "assets/textures/blocks/dirt.png");
+    testTexture.create(device, renderer, "assets/textures/blocks/block_atlas.png");
 
     renderer.createDescriptorSet(pipeline, testTexture);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());

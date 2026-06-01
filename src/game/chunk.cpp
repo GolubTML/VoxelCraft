@@ -14,7 +14,7 @@ void Chunk::createChunk(Device& device)
                     x == 0 || x == WIDTH-1 ||
                     z == 0 || z == LENGTH-1)
                 {
-                    blocks[x][y][z].type = BlockType::Dirt;
+                    blocks[x][y][z].type = BlockType::Stone;
                 }
                 else
                 {
@@ -31,52 +31,57 @@ void Chunk::createMesh(Device& device)
     std::vector<uint32_t> indices;
 
     // lamda function, we will need this
-    auto addFace = [&](glm::vec3 pos, BlockFace face)
+    auto addFace = [&](glm::vec3 pos, BlockFace face, BlockUV uv)
     {
         uint32_t start = vertices.size();
+
+        float x0 = uv.topLeft.x;
+        float y0 = uv.topLeft.y;
+        float x1 = uv.bottomRight.x;
+        float y1 = uv.bottomRight.y;
 
         switch (face)
         {
         case BlockFace::TOP:
-            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {1, 0}});
-            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {0, 0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {0, 1}});
-            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {1, 1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {x1, y1}});
 
             break;
         case BlockFace::BOTTOM:
-            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {1, 0}});
-            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {0, 0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {0, 1}});
-            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {1, 1}});
+            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {x1, y1}});
 
             break;
         case BlockFace::FRONT:
-            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {1, 0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {0, 0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {0, 1}});
-            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {1, 1}});
+            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {x1, y1}});
             
             break;
         case BlockFace::BACK:
-            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {1, 0}});
-            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {0, 0}});
-            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {0, 1}});
-            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {1, 1}});
+            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {x1, y1}});
             
             break;
         case BlockFace::LEFT:
-            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {1, 0}});
-            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {0, 0}});
-            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {0, 1}});
-            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {1, 1}});
+            vertices.push_back({pos + glm::vec3(0,0,0), {1,1,1}, {x1, y0}});
+            vertices.push_back({pos + glm::vec3(0,0,1), {1,1,1}, {x0, y0}});
+            vertices.push_back({pos + glm::vec3(0,1,1), {1,1,1}, {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), {1,1,1}, {x1, y1}});
 
             break;
         case BlockFace::RIGHT:
-            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {1, 0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {0, 0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {0, 1}});
-            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {1, 1}});
+            vertices.push_back({pos + glm::vec3(1,0,0), {1,1,1}, {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), {1,1,1}, {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), {1,1,1}, {x0, y1}});
+            vertices.push_back({pos + glm::vec3(1,1,0), {1,1,1}, {x1, y1}});
 
             break;
         
@@ -94,7 +99,8 @@ void Chunk::createMesh(Device& device)
         for (int y = 0; y < HEIGHT; ++y)
             for (int z = 0; z < LENGTH; ++z)
             {
-                if (blocks[x][y][z].type == BlockType::Air)
+                BlockType currentType = blocks[x][y][z].type;
+                if (currentType == BlockType::Air)
                     continue;
 
                 glm::vec3 p(x, y, z);
@@ -102,27 +108,45 @@ void Chunk::createMesh(Device& device)
                 // for each face, we need check for neighbour
                 // +x axis
                 if (x == WIDTH - 1 || blocks[x + 1][y][z].type == BlockType::Air)
-                    addFace(p, BlockFace::RIGHT);
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::RIGHT);
+                    addFace(p, BlockFace::RIGHT, uv);
+                }
                 
                 // -x axis
                 if (x == 0 || blocks[x-1][y][z].type == BlockType::Air)
-                    addFace(p, BlockFace::LEFT);
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::LEFT);
+                    addFace(p, BlockFace::LEFT, uv);
+                }
 
                 // +y axis
                 if (y == HEIGHT - 1 || blocks[x][y+1][z].type == BlockType::Air)
-                    addFace(p, BlockFace::TOP);
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::TOP);
+                    addFace(p, BlockFace::TOP, uv);
+                }
 
                 // -y axis
                 if (y == 0 || blocks[x][y-1][z].type == BlockType::Air)
-                    addFace(p, BlockFace::BOTTOM);
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::BOTTOM);
+                    addFace(p, BlockFace::BOTTOM, uv);
+                }
 
                 // +z axis
                 if (z == LENGTH - 1 || blocks[x][y][z+1].type == BlockType::Air)
-                    addFace(p, BlockFace::FRONT);
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::FRONT);
+                    addFace(p, BlockFace::FRONT, uv);
+                }
 
                 // -z axis
                 if (z == 0 || blocks[x][y][z-1].type == BlockType::Air)
-                    addFace(p, BlockFace::BACK);
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::BACK);
+                    addFace(p, BlockFace::BACK, uv);
+                }
             } 
 
     mesh.create(device, vertices, indices);

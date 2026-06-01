@@ -174,7 +174,7 @@ void Texture2D::createSampler(Device& device)
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     
-    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.anisotropyEnable = VK_FALSE;
 
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(device.getPhysicalDevice(), &properties);
@@ -345,6 +345,22 @@ void Texture2D::generateMipmaps(Device& device, Renderer& renderer, VkImage imag
         blit.dstSubresource.mipLevel = i;
         blit.dstSubresource.baseArrayLayer = 0;
         blit.dstSubresource.layerCount = 1;
+
+        /* For debugging  
+        VkClearColorValue clearColor;
+        if (i == 1)      clearColor = { {1.0f, 0.0f, 0.0f, 1.0f} }; 
+        else if (i == 2) clearColor = { {0.0f, 1.0f, 0.0f, 1.0f} }; 
+        else if (i == 3) clearColor = { {0.0f, 0.0f, 1.0f, 1.0f} }; 
+        else             clearColor = { {1.0f, 1.0f, 0.0f, 1.0f} }; 
+
+        VkImageSubresourceRange clearRange{};
+        clearRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        clearRange.baseMipLevel = i;
+        clearRange.levelCount = 1;
+        clearRange.baseArrayLayer = 0;
+        clearRange.layerCount = 1;
+
+        vkCmdClearColorImage(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &clearRange);*/
 
         vkCmdBlitImage(commandBuffer,
             image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
