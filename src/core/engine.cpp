@@ -41,7 +41,7 @@ void Engine::initVulkan()
     createSurface();
     device.init(instance, surface);
     swapchain.create(device, surface, window);
-    mainCamera = Camera(glm::vec3(0.f, 0.f, 2.f), 60.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+    mainCamera = Camera(glm::vec3(0.f, 65.f, 2.f), 60.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
 
     glfwSetWindowUserPointer(window, &mainCamera);
     glfwSetCursorPosCallback(window, mouse_callback);

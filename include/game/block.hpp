@@ -35,3 +35,4 @@ struct BlockUV
 
 BlockUV calculateUV(int gridX, int gridY);
 BlockUV getBlockTextureUV(BlockType type, BlockFace face);
+glm::vec3 getBlockFaceColor(BlockType type, BlockFace face); // helper function. Some textures in atlas are gray, it means, thath is a mask for real texture

@@ -51,3 +51,18 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
         break;
     }
 }
+
+glm::vec3 getBlockFaceColor(BlockType type, BlockFace face)
+{
+    // it's bad code, but in future i will make it better
+
+    if (type == BlockType::Grass)
+    {
+        if (face == BlockFace::TOP)
+        {
+            return glm::vec3(0.43f, 1.f, 0.24f);
+        }
+    }
+
+    return glm::vec3(1.f);
+}
