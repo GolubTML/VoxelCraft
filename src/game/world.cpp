@@ -18,7 +18,7 @@ World::~World() { }
 
 void World::create(Device& device)
 {
-    int r = 4; // radius of 2 chunks
+    int r = 2; // radius of 2 chunks
 
     for (int cx = -r; cx <= r; ++cx)
         for (int cz = -r; cz <= r; ++cz)

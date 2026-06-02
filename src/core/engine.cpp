@@ -74,6 +74,11 @@ void Engine::mainLoop()
         float currentTime = glfwGetTime();
         float deltaTime = currentTime - lastTime;
         lastTime = currentTime;
+
+        int fps = (int)(1.f / deltaTime);
+        std::string title = "VoxelCraft: " + std::to_string(fps);
+
+        glfwSetWindowTitle(window, title.c_str());
         
         glfwPollEvents();
     
