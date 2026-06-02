@@ -54,7 +54,9 @@ void Engine::initVulkan()
 
     renderer.createDescriptorSet(pipeline, testTexture);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
-    testChunk.createChunk(device);
+    
+    world = std::make_unique<World>(123);
+    world->create(device);
 }
 
 void Engine::createSurface()
@@ -78,10 +80,9 @@ void Engine::mainLoop()
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, GLFW_TRUE);
 
-
         mainCamera.move(window, deltaTime);
 
-        renderer.presentFrame(pipeline, mainCamera, testChunk);
+        renderer.presentFrame(pipeline, mainCamera, *world);
     }
 
     vkDeviceWaitIdle(device.getDevice());
@@ -94,7 +95,7 @@ void Engine::cleanup()
     testTexture.cleanup(device);
 
     renderer.cleanup(device.getDevice());
-    testChunk.cleanup(device.getDevice());
+    world->cleanup(device.getDevice());
     swapchain.cleanup(device.getDevice());
     pipeline.cleanup(device.getDevice());
 

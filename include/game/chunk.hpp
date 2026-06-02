@@ -15,16 +15,9 @@ public:
 
     Block blocks[WIDTH][HEIGHT][LENGTH];
     glm::ivec3 pos = glm::ivec3(0.f);
-    
-    void createChunk(Device& device);
-    void cleanup(VkDevice device);
 
-    void createMesh(Device& device);
-        
-    const Mesh& getMesh() const;
-    glm::mat4 getModelMatrix() const;  
+    void cleanup(VkDevice device);
     
-private:
     glm::mat4 modelMatrix;
 
     Mesh mesh;

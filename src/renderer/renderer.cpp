@@ -6,6 +6,7 @@
 #include <core/utils.hpp>
 #include <renderer/types.hpp>
 #include <game/chunk.hpp>
+#include <game/world.hpp>
 #include <renderer/texture.hpp>
 #include <stdexcept>
 
@@ -49,7 +50,7 @@ void Renderer::cleanup(VkDevice device)
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const Chunk& chunk)
+void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const World& world)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -57,7 +58,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, cons
     // after wait, we need to reset fence
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-    updateUniformBuffer(camera, chunk);
+    updateUniformBuffer(camera);
 
     // let's get image index
     uint32_t imageIndex = 0;
@@ -66,7 +67,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, cons
     // and now, we can record commands in buffer
     // but, we need to reset whole buffer
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, chunk.getMesh());
+    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, world);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -231,13 +232,11 @@ void Renderer::createUniformBuffers(Device& cDevice)
     }
 }   
 
-void Renderer::updateUniformBuffer(const Camera& camera, const Chunk& chunk)
+void Renderer::updateUniformBuffer(const Camera& camera)
 {
     // and here, basic UBO object will created
     UniformBufferObject ubo{};
-    // rotate with time 
-    ubo.model = chunk.getModelMatrix();
-    // viwe
+    // view
     ubo.view = camera.getCameraView();
     // and projection
     ubo.proj = camera.getCameraProjection();
@@ -383,7 +382,7 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const Mesh& mesh)
+void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const World& world)
 {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -435,15 +434,38 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
     scissor.extent = swapchain->swapChainExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    // vertex buffer
+    /*// vertex buffer
     VkBuffer vertexBuffers[] = {mesh.vertexBuffer.buffer};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
     // and index
-    vkCmdBindIndexBuffer(buffer, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(buffer, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);*/
 
-    // now, we are ready to draw
-    vkCmdDrawIndexed(buffer, static_cast<uint32_t>(mesh.indexCount), 1, 0, 0, 0);
+    vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
+    for (auto& [pos, chunk] : world.getChunks())
+    {
+        if (chunk->mesh.indexCount == 0) continue;
+
+        glm::mat4 modelMatrix = chunk->modelMatrix;
+        // and pushing constant to GPU
+        vkCmdPushConstants(
+            buffer,
+            pipeline.pipelineLayout,      
+            VK_SHADER_STAGE_VERTEX_BIT, 
+            0,                          
+            sizeof(glm::mat4),          
+            &modelMatrix                
+        );
+
+        VkBuffer vertexBuffers[] = { chunk->mesh.vertexBuffer.buffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(buffer, chunk->mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        // and draw it
+        vkCmdDrawIndexed(buffer, chunk->mesh.indexCount, 1, 0, 0, 0);
+    }
 
     // and finish
     vkCmdEndRenderPass(buffer);

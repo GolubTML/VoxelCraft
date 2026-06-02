@@ -14,7 +14,7 @@
 #include <core/debugger.hpp>
 #include <renderer/mesh.hpp>
 #include <core/camera.hpp>
-#include <game/chunk.hpp>
+#include <game/world.hpp>
 #include <renderer/texture.hpp>
 #include <memory>
 
@@ -38,9 +38,10 @@ private:
     // Pipeline
     Renderer renderer;
     Pipeline pipeline;
-    // mesh
-    Chunk testChunk;
+    
     Texture2D testTexture;
+
+    std::unique_ptr<World> world;
 
     float lastTime = 0.f;
 

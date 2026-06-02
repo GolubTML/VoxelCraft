@@ -160,14 +160,21 @@ void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPas
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    // we need push constants to shader
+    // lets add new struct
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(glm::mat4);
+
 
     // Creating pipeline layout
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1; // 1, because we will cast description layout
     pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // and now, we need to set descriptor layout here 
-    pipelineLayoutInfo.pushConstantRangeCount = 0; 
-    pipelineLayoutInfo.pPushConstantRanges = nullptr; 
+    pipelineLayoutInfo.pushConstantRangeCount = 1; // because we push only model matrix 
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; 
 
     if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
     {
