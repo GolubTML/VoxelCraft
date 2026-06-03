@@ -2,6 +2,9 @@
 
 #include <map>
 #include <memory>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 #include <lib/FastNoiseLite.h>
 
@@ -31,8 +34,10 @@ public:
     World(int seed);
     ~World();
 
-    void create(Device& device);
+    void initWorldThread(Device& device);
     void cleanup(VkDevice device);
+
+    void updatePlayerPos(const glm::vec3& playerPos);
 
     void generateChunks(const glm::ivec3& chunkPos);
     void generateMeshForChunks(Device& device, Chunk& chunk);
@@ -41,11 +46,24 @@ public:
 
     const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& getChunks() const;
 
+    std::mutex& getChunkMutex() const;
+
 private:
+    Device* devicePtr = nullptr;
+
     fnl_state noise;
     int worldSeed;
 
+    std::thread generationThread;
+    mutable std::mutex chunksMutex;
+    std::atomic<bool> isRunning{false};
+
+    std::atomic<int> playerChunkX{0};
+    std::atomic<int> playerChunkZ{0};
+
     std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare> chunks;
+
+    void threadLoop();
 
     BlockType calculateBlockType(int globalX, int globalY, int globalZ);
 };

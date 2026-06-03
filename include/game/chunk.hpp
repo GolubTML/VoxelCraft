@@ -13,6 +13,9 @@ public:
     static constexpr int HEIGHT = 64;
     static constexpr int LENGTH = 16;
 
+    bool isGenerated = false;
+    bool needUpdate = false;
+
     Block blocks[WIDTH][HEIGHT][LENGTH];
     glm::ivec3 pos = glm::ivec3(0.f);
 

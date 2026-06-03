@@ -9,6 +9,7 @@ enum BlockType
     Dirt,
     Grass,
     Stone,
+    Sand,
 };
 
 enum BlockFace

@@ -3,6 +3,7 @@
 #include <game/chunk.hpp>
 #include <core/device.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 
 World::World(int seed) : worldSeed(seed)
 {
@@ -14,26 +15,49 @@ World::World(int seed) : worldSeed(seed)
     noise.frequency = 0.005f;
 }
 
-World::~World() { }
+World::~World() 
+{ 
+    devicePtr = nullptr;
+    isRunning = false;
 
-void World::create(Device& device)
+    if (generationThread.joinable())
+        generationThread.join();
+}
+
+void World::initWorldThread(Device& device)
 {
-    int r = 2; // radius of 2 chunks
+    std::cout << "Hello from separete thread!" << "\n";
 
-    for (int cx = -r; cx <= r; ++cx)
-        for (int cz = -r; cz <= r; ++cz)
-        {
-            generateChunks(glm::ivec3(cx, 0, cz));
-        }
+    devicePtr = &device;
+    isRunning = true;
 
-    for (auto& [pos, chunk] : chunks)
-        generateMeshForChunks(device, *chunk);
+    generationThread = std::thread(&World::threadLoop, this);
+}
+
+void World::updatePlayerPos(const glm::vec3& playerPos)
+{
+    if (!isRunning) return;
+
+    int cx = static_cast<int>(playerPos.x) / Chunk::WIDTH;
+    int cz = static_cast<int>(playerPos.z) / Chunk::LENGTH;
+
+    if (playerPos.x < 0) cx--;
+    if (playerPos.z < 0) cz--;
+
+    playerChunkX = cx;
+    playerChunkZ = cz;
 }
 
 void World::cleanup(VkDevice device)
 {
+    isRunning = false;
+
+    if (generationThread.joinable())
+        generationThread.join();
+
     for (auto& [pos, chunk] : chunks)
-        chunk->cleanup(device);
+        if (chunk)   
+            chunk->cleanup(device);
 
     chunks.clear();
 }
@@ -224,13 +248,93 @@ const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& World::getC
     return chunks;
 }
 
+std::mutex& World::getChunkMutex() const
+{
+    return chunksMutex;
+}
+
+void World::threadLoop()
+{
+    int renderRadius = 2;
+
+    while (isRunning)
+    {
+        int currentX = playerChunkX;
+        int currentZ = playerChunkZ;
+
+        for (int cx = currentX - renderRadius; cx <= currentX + renderRadius; ++cx)
+            for (int cz = currentZ - renderRadius; cz <= currentZ + renderRadius; ++cz)        
+            {
+                if (!isRunning) return;
+
+                glm::ivec3 pos(cx, 0, cz);
+
+                bool chunkExists = false;
+                {
+                    std::lock_guard<std::mutex> lock(chunksMutex);
+                    chunkExists = (chunks.find(pos) != chunks.end());
+                }
+
+                if (!chunkExists)
+                {
+                    generateChunks(pos);
+
+                    {
+                        std::lock_guard<std::mutex> lock(chunksMutex);
+                        chunks[pos]->isGenerated = true;
+                        chunks[pos]->needUpdate = true; // yes, because now it doesnt get face culling (because doesn't have any neighbors)
+
+                        glm::ivec3 neighbors[] = 
+                        {
+                            pos + glm::ivec3(1, 0, 0), 
+                            pos + glm::ivec3(-1, 0, 0),
+                            pos + glm::ivec3(0, 0, 1), 
+                            pos + glm::ivec3(0, 0, -1) 
+                        };
+
+                        for (const auto& neighbor : neighbors)
+                        {
+                            auto it = chunks.find(neighbor);
+
+                            if (it != chunks.end() && it->second)
+                            {
+                                it->second->needUpdate = true; // also needs update
+                            }
+                        }
+                    }
+                }
+            }
+
+        {
+            std::lock_guard<std::mutex> lock(chunksMutex);
+
+            for (int cx = currentX - renderRadius; cx <= currentX + renderRadius; ++cx) 
+                for (int cz = currentZ - renderRadius; cz <= currentZ + renderRadius; ++cz) {
+                    glm::ivec3 pos(cx, 0, cz);
+                    auto it = chunks.find(pos);
+
+                    
+                    if (it != chunks.end() && it->second && it->second->needUpdate) 
+                    {
+                        generateMeshForChunks(*devicePtr, *it->second);
+                        it->second->needUpdate = false;
+                    }
+                }
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
 BlockType World::calculateBlockType(int globalX, int globalY, int globalZ)
 {
     float noiseVal = fnlGetNoise2D(&noise, static_cast<float>(globalX), static_cast<float>(globalZ));
     
+    float noiseValWrapped = fnlGetNoise2D(&noise, static_cast<float>(globalX) + noiseVal, static_cast<float>(globalZ) + noiseVal);
+
     // 30, like base level of terrain
     // and 25 is level of mountains
-    int terrainHeight = 30 + static_cast<int>((noiseVal + 1.0f) * 0.5f * 25.0f);
+    int terrainHeight = 30 + static_cast<int>((noiseValWrapped + 1.0f) * 0.5f * 25.0f);
 
     if (globalY > terrainHeight) 
     {

@@ -31,6 +31,11 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
     {
         return calculateUV(19, 5);
     }
+    
+    case BlockType::Sand:
+    {
+        return calculateUV(18, 5);
+    }
 
     case BlockType::Grass:
     {

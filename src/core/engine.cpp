@@ -55,8 +55,8 @@ void Engine::initVulkan()
     renderer.createDescriptorSet(pipeline, testTexture);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
     
-    world = std::make_unique<World>(123);
-    world->create(device);
+    world = std::make_unique<World>(132416);
+    world->initWorldThread(device);
 }
 
 void Engine::createSurface()
@@ -86,6 +86,8 @@ void Engine::mainLoop()
             glfwSetWindowShouldClose(window, GLFW_TRUE);
 
         mainCamera.move(window, deltaTime);
+
+        world->updatePlayerPos(mainCamera.pos);
 
         renderer.presentFrame(pipeline, mainCamera, *world);
     }

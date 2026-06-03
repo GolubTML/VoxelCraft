@@ -443,29 +443,35 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
 
     vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-    for (auto& [pos, chunk] : world.getChunks())
     {
-        if (chunk->mesh.indexCount == 0) continue;
+        // we added new thread, so, we should also use mutex, for sync
 
-        glm::mat4 modelMatrix = chunk->modelMatrix;
-        // and pushing constant to GPU
-        vkCmdPushConstants(
-            buffer,
-            pipeline.pipelineLayout,      
-            VK_SHADER_STAGE_VERTEX_BIT, 
-            0,                          
-            sizeof(glm::mat4),          
-            &modelMatrix                
-        );
+        std::lock_guard<std::mutex> lock(world.getChunkMutex());
+        for (auto& [pos, chunk] : world.getChunks())
+        {
+            if (chunk->mesh.indexCount == 0) continue;
 
-        VkBuffer vertexBuffers[] = { chunk->mesh.vertexBuffer.buffer };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(buffer, chunk->mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            glm::mat4 modelMatrix = chunk->modelMatrix;
+            // and pushing constant to GPU
+            vkCmdPushConstants(
+                buffer,
+                pipeline.pipelineLayout,      
+                VK_SHADER_STAGE_VERTEX_BIT, 
+                0,                          
+                sizeof(glm::mat4),          
+                &modelMatrix                
+            );
 
-        // and draw it
-        vkCmdDrawIndexed(buffer, chunk->mesh.indexCount, 1, 0, 0, 0);
+            VkBuffer vertexBuffers[] = { chunk->mesh.vertexBuffer.buffer };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
+            vkCmdBindIndexBuffer(buffer, chunk->mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+            // and draw it
+            vkCmdDrawIndexed(buffer, chunk->mesh.indexCount, 1, 0, 0, 0);
+        }
     }
+    
 
     // and finish
     vkCmdEndRenderPass(buffer);
