@@ -8,6 +8,7 @@
 #include <game/chunk.hpp>
 #include <game/world.hpp>
 #include <renderer/texture.hpp>
+#include <core/frustum.hpp>
 #include <stdexcept>
 
 #include <glm/glm.hpp>
@@ -50,7 +51,7 @@ void Renderer::cleanup(VkDevice device)
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const World& world)
+void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, const World& world)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -67,7 +68,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, cons
     // and now, we can record commands in buffer
     // but, we need to reset whole buffer
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, pipeline, world);
+    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, fCam, pipeline, world);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -382,7 +383,7 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Pipeline& pipeline, const World& world)
+void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, const World& world)
 {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -450,6 +451,12 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
         for (auto& [pos, chunk] : world.getChunks())
         {
             if (chunk->mesh.indexCount == 0) continue;
+
+            glm::vec3 minBound(pos.x * 16, 0, pos.z * 16);
+            glm::vec3 maxBound((pos.x + 1) * 16, 256, (pos.z + 1) * 16);
+
+            if (!fCam.isBoxVisible(minBound, maxBound))
+                continue;
 
             glm::mat4 modelMatrix = chunk->modelMatrix;
             // and pushing constant to GPU

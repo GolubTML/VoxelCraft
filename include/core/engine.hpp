@@ -16,6 +16,7 @@
 #include <core/camera.hpp>
 #include <game/world.hpp>
 #include <renderer/texture.hpp>
+#include <core/frustum.hpp>
 #include <memory>
 
 class Engine
@@ -35,6 +36,7 @@ private:
     SwapChain swapchain;
     // camera
     Camera mainCamera;
+    Frustum frustumCam;
     // Pipeline
     Renderer renderer;
     Pipeline pipeline;

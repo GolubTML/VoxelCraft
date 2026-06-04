@@ -86,10 +86,11 @@ void Engine::mainLoop()
             glfwSetWindowShouldClose(window, GLFW_TRUE);
 
         mainCamera.move(window, deltaTime);
+        frustumCam.update(mainCamera.getCameraProjection() * mainCamera.getCameraView());
 
         world->updatePlayerPos(mainCamera.pos);
 
-        renderer.presentFrame(pipeline, mainCamera, *world);
+        renderer.presentFrame(pipeline, mainCamera, frustumCam, *world);
     }
 
     vkDeviceWaitIdle(device.getDevice());
