@@ -446,14 +446,16 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
 
     {
         // we added new thread, so, we should also use mutex, for sync
-
         std::lock_guard<std::mutex> lock(world.getChunkMutex());
+
+        int rendererChunks = 0;
+
         for (auto& [pos, chunk] : world.getChunks())
         {
             if (chunk->mesh.indexCount == 0) continue;
 
-            glm::vec3 minBound(pos.x * 16, 0, pos.z * 16);
-            glm::vec3 maxBound((pos.x + 1) * 16, 256, (pos.z + 1) * 16);
+            glm::vec3 minBound(pos.x * Chunk::WIDTH, 0, pos.z * Chunk::LENGTH);
+            glm::vec3 maxBound((pos.x + 1) * Chunk::WIDTH, Chunk::HEIGHT, (pos.z + 1) * Chunk::LENGTH);
 
             if (!fCam.isBoxVisible(minBound, maxBound))
                 continue;
@@ -476,7 +478,10 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
 
             // and draw it
             vkCmdDrawIndexed(buffer, chunk->mesh.indexCount, 1, 0, 0, 0);
+            ++rendererChunks;
         }
+
+        std::cout << "All chunks in memory: " << world.getChunks().size() << " Chunks renderer: " << rendererChunks << "\n";
     }
     
 
