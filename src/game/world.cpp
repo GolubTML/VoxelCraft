@@ -409,7 +409,30 @@ void World::saveChunkToFile(const glm::ivec3& pos, const Chunk& chunk)
     std::ofstream out(fileName, std::ios::binary);
     if (!out.is_open()) return;
 
-    out.write(reinterpret_cast<const char*>(chunk.blocks), sizeof(chunk.blocks));
+    const BlockType* blockPtr = &chunk.blocks[0][0][0].type;
+    int totalBlocks = Chunk::WIDTH * Chunk::HEIGHT * Chunk::LENGTH;
+
+    BlockType currentType = blockPtr[0];
+    uint16_t runLength = 1;
+
+    for (int i = 1; i < totalBlocks; ++i)
+    {
+        if (blockPtr[i] == currentType && runLength < UINT16_MAX)
+        {
+            ++runLength;
+        }
+        else
+        {
+            out.write(reinterpret_cast<const char*>(&runLength), sizeof(runLength));
+            out.write(reinterpret_cast<const char*>(&currentType), sizeof(currentType));
+
+            currentType = blockPtr[i];
+            runLength = 1;
+        }
+    }
+
+    out.write(reinterpret_cast<const char*>(&runLength), sizeof(runLength));
+    out.write(reinterpret_cast<const char*>(&currentType), sizeof(currentType));
 }
 
 bool World::loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk)
@@ -421,7 +444,28 @@ bool World::loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk)
     std::ifstream in(fileName, std::ios::binary);
     if (!in.is_open()) return false;
 
-    in.read(reinterpret_cast<char*>(chunk.blocks), sizeof(chunk.blocks));
+    Block* blockArray = &chunk.blocks[0][0][0];
+    int totalBlocks = Chunk::WIDTH * Chunk::HEIGHT * Chunk::LENGTH;
+    int blocksRead = 0;
+
+    while (blocksRead < totalBlocks)
+    {
+        uint16_t runLength = 0;
+        BlockType blockType = BlockType::Air;
+
+        if (!in.read(reinterpret_cast<char*>(&runLength), sizeof(runLength))) break;
+        if (!in.read(reinterpret_cast<char*>(&blockType), sizeof(blockType))) break;
+
+        for (uint16_t i = 0; i < runLength; ++i)
+        {
+            if (blocksRead < totalBlocks)
+            {
+                blockArray[blocksRead].type = blockType;
+                blocksRead++;
+            }
+        }
+    }
+
     return true;
 }
 

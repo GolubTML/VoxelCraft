@@ -9,9 +9,9 @@ class Device;
 class Chunk
 {
 public:
-    static constexpr int WIDTH = 16;
-    static constexpr int HEIGHT = 64;
-    static constexpr int LENGTH = 16;
+    static constexpr uint8_t WIDTH = 16;
+    static constexpr uint8_t HEIGHT = 64;
+    static constexpr uint8_t LENGTH = 16;
 
     bool isGenerated = false;
     bool needUpdate = false;
