@@ -16,6 +16,30 @@ World::World(int seed) : worldSeed(seed)
     noise.octaves = 4;
     noise.frequency = 0.005f;
 
+    tempNoise = fnlCreateState();
+    tempNoise.seed = worldSeed + 100;
+    tempNoise.noise_type = FNL_NOISE_OPENSIMPLEX2;
+    tempNoise.fractal_type = FNL_FRACTAL_FBM;
+    tempNoise.frequency = 0.0008f;
+
+    moistureNoise = fnlCreateState();
+    moistureNoise.seed = worldSeed + 200;
+    moistureNoise.noise_type = FNL_NOISE_OPENSIMPLEX2;
+    moistureNoise.fractal_type = FNL_FRACTAL_FBM;
+    moistureNoise.frequency = 0.0008f;
+
+    oceanNoise = fnlCreateState();
+    oceanNoise.seed = worldSeed + 300;
+    oceanNoise.noise_type = FNL_NOISE_OPENSIMPLEX2;
+    oceanNoise.fractal_type = FNL_FRACTAL_FBM;
+    oceanNoise.frequency = 0.005f;
+
+    riverNoise = fnlCreateState();
+    riverNoise.seed = worldSeed + 400;
+    riverNoise.noise_type = FNL_NOISE_OPENSIMPLEX2;
+    riverNoise.fractal_type = FNL_FRACTAL_FBM;
+    riverNoise.frequency = 0.002f;
+
     std::filesystem::path worldSaveDir = "world_save";
 
     try
@@ -252,24 +276,6 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
     return {vertices, indices};
 }
 
-BlockType World::getBlockAt(const glm::ivec3& globalPos) const
-{
-    glm::ivec3 chunkPos;
-    chunkPos.x = globalPos.x >= 0 ? globalPos.x / Chunk::WIDTH  : (globalPos.x - Chunk::WIDTH + 1) / Chunk::WIDTH;
-    chunkPos.y = globalPos.y >= 0 ? globalPos.y / Chunk::HEIGHT : (globalPos.y - Chunk::HEIGHT + 1) / Chunk::HEIGHT;
-    chunkPos.z = globalPos.z >= 0 ? globalPos.z / Chunk::LENGTH : (globalPos.z - Chunk::LENGTH + 1) / Chunk::LENGTH;
-
-    auto it = chunks.find(chunkPos);
-    if (it == chunks.end())
-        return BlockType::Air; // we at the end of map, so, there is only air
-
-    int localX = ((globalPos.x % Chunk::WIDTH) + Chunk::WIDTH) % Chunk::WIDTH;
-    int localY = ((globalPos.y % Chunk::HEIGHT) + Chunk::HEIGHT) % Chunk::HEIGHT;
-    int localZ = ((globalPos.z % Chunk::LENGTH) + Chunk::LENGTH) % Chunk::LENGTH;
-
-    return it->second->blocks[localX][localY][localZ].type;
-}
-
 const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& World::getChunks() const
 {
     return chunks;
@@ -471,28 +477,116 @@ bool World::loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk)
 
 BlockType World::calculateBlockType(int globalX, int globalY, int globalZ)
 {
+    const uint8_t SEA_LEVEL = 22;
+    const float RIVER_WIDTH = 0.4f;
+
+    BiomeType biome = getBiomeAt(globalX, globalZ);
+
     float noiseVal = fnlGetNoise2D(&noise, static_cast<float>(globalX), static_cast<float>(globalZ));
-    
     float noiseValWrapped = fnlGetNoise2D(&noise, static_cast<float>(globalX) + noiseVal, static_cast<float>(globalZ) + noiseVal);
 
-    // 30, like base level of terrain
-    // and 25 is level of mountains
-    int terrainHeight = 30 + static_cast<int>((noiseValWrapped + 1.0f) * 0.5f * 25.0f);
-
-    if (globalY > terrainHeight) 
+    float baseHeight = 30.0f;
+    switch (biome)
     {
+        case BiomeType::Desert:  baseHeight = 26.0f + noiseValWrapped * 4.0f;  break;
+        case BiomeType::Forest:  baseHeight = 28.0f + noiseValWrapped * 18.0f; break;
+        case BiomeType::Plains:  baseHeight = 27.0f + noiseValWrapped * 12.0f; break;
+        case BiomeType::Tundra:  baseHeight = 28.0f + noiseValWrapped * 16.0f; break;
+    }
+
+    float oceanVal = fnlGetNoise2D(&oceanNoise, globalX, globalZ);
+    if (oceanVal < 0.1f)
+    {
+        float oceanDepthMask = std::abs(oceanVal);
+        baseHeight = glm::mix(baseHeight, static_cast<float>(SEA_LEVEL - 8), oceanDepthMask);
+    }
+
+    float riverVal = std::abs(fnlGetNoise2D(&riverNoise, globalX, globalZ));
+
+    if (riverVal < RIVER_WIDTH)
+    {
+        float riverMask = 1.f - (riverVal / RIVER_WIDTH);
+        riverMask = riverMask * riverMask * (3.0f - 2.0f * riverMask);
+
+        float targetRiverDepth = static_cast<float>(SEA_LEVEL - 3);
+
+        if (baseHeight > targetRiverDepth)
+        {
+            baseHeight = glm::mix(baseHeight, targetRiverDepth, riverMask);
+        }
+    }
+
+    int terrainHeight = static_cast<int>(baseHeight);
+
+    if (globalY > terrainHeight)
+    {
+        if (globalY <= SEA_LEVEL)
+            return BlockType::Water;
+        
         return BlockType::Air;
-    } 
+    }
+
     else if (globalY == terrainHeight) 
     {
-        return BlockType::Grass;
+        if (terrainHeight < SEA_LEVEL - 1)
+        {
+            return BlockType::Sand; 
+        }
+        if (terrainHeight == SEA_LEVEL || terrainHeight == SEA_LEVEL - 1)
+        {
+            return (biome == BiomeType::Tundra) ? BlockType::SnowGrass : BlockType::Sand;
+        }
+
+        switch (biome)
+        {
+            case BiomeType::Desert: return BlockType::Sand;
+            case BiomeType::Tundra: return BlockType::SnowGrass;
+            default:                return BlockType::Grass;
+        }
     } 
     else if (globalY > terrainHeight - 4) 
     {
-        return BlockType::Dirt;
+        if (terrainHeight < SEA_LEVEL - 1) return BlockType::Sand;
+
+        return (biome == BiomeType::Desert) ? BlockType::Sand : BlockType::Dirt;
     } 
     else 
     {
         return BlockType::Stone;
+    }
+}
+
+BlockType World::getBlockAt(const glm::ivec3& globalPos) const
+{
+    glm::ivec3 chunkPos;
+    chunkPos.x = globalPos.x >= 0 ? globalPos.x / Chunk::WIDTH  : (globalPos.x - Chunk::WIDTH + 1) / Chunk::WIDTH;
+    chunkPos.y = globalPos.y >= 0 ? globalPos.y / Chunk::HEIGHT : (globalPos.y - Chunk::HEIGHT + 1) / Chunk::HEIGHT;
+    chunkPos.z = globalPos.z >= 0 ? globalPos.z / Chunk::LENGTH : (globalPos.z - Chunk::LENGTH + 1) / Chunk::LENGTH;
+
+    auto it = chunks.find(chunkPos);
+    if (it == chunks.end())
+        return BlockType::Air; // we at the end of map, so, there is only air
+
+    int localX = ((globalPos.x % Chunk::WIDTH) + Chunk::WIDTH) % Chunk::WIDTH;
+    int localY = ((globalPos.y % Chunk::HEIGHT) + Chunk::HEIGHT) % Chunk::HEIGHT;
+    int localZ = ((globalPos.z % Chunk::LENGTH) + Chunk::LENGTH) % Chunk::LENGTH;
+
+    return it->second->blocks[localX][localY][localZ].type;
+}
+
+BiomeType World::getBiomeAt(int globalX, int globalZ)
+{
+    float t = fnlGetNoise2D(&tempNoise, globalX, globalZ);
+    float m = fnlGetNoise2D(&moistureNoise, globalX, globalZ);
+
+    if (t > 0.2f)
+    {
+        if (m < -0.1f) return BiomeType::Desert;
+        else return BiomeType::Forest;
+    }
+    else
+    {   
+        if (m < -0.1f) return BiomeType::Tundra;
+        else return BiomeType::Plains;
     }
 }

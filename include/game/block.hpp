@@ -8,8 +8,10 @@ enum BlockType : uint8_t
     UNKNOW,
     Dirt,
     Grass,
+    SnowGrass,
     Stone,
     Sand,
+    Water // now, it's just a solid block. Need to make it transperent
 };
 
 enum BlockFace

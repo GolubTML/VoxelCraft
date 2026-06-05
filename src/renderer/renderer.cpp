@@ -406,7 +406,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
 
     // clear color. Yes, it actually rendering
     std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.f, 0.f, 0.f, 1.f}};
+    clearValues[0].color = {{0.42f, 0.6f, 0.82f, 1.f}};
     clearValues[1].depthStencil = {1.0f, 0};
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());

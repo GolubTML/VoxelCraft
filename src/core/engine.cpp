@@ -55,7 +55,7 @@ void Engine::initVulkan()
     renderer.createDescriptorSet(pipeline, testTexture);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
     
-    world = std::make_unique<World>(1);
+    world = std::make_unique<World>(123412);
     world->initWorldThread(device);
 }
 
