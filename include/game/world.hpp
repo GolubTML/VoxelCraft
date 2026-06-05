@@ -62,7 +62,7 @@ private:
 
     fnl_state oceanNoise;
     fnl_state riverNoise;
-    
+
     int worldSeed;
     
     std::thread generationThread;
@@ -83,4 +83,6 @@ private:
     BlockType calculateBlockType(int globalX, int globalY, int globalZ);
     BlockType getBlockAt(const glm::ivec3& globalPos) const;
     BiomeType getBiomeAt(int globalX, int globalZ);
+
+    int findSurfaceHight(const Chunk& chunk, int x, int z);
 };

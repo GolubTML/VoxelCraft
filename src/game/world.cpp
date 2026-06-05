@@ -32,7 +32,7 @@ World::World(int seed) : worldSeed(seed)
     oceanNoise.seed = worldSeed + 300;
     oceanNoise.noise_type = FNL_NOISE_OPENSIMPLEX2;
     oceanNoise.fractal_type = FNL_FRACTAL_FBM;
-    oceanNoise.frequency = 0.005f;
+    oceanNoise.frequency = 0.001f;
 
     riverNoise = fnlCreateState();
     riverNoise.seed = worldSeed + 400;
@@ -130,7 +130,37 @@ void World::generateChunks(const glm::ivec3& chunkPos)
                     newChunk->blocks[x][y][z].type = calculateBlockType(globalX, globalY, globalZ);
                 }
 
+        for (int x = 0; x < Chunk::WIDTH; ++x)
+            for (int z = 0; z < Chunk::LENGTH; ++z)
+            {
+                int globalX = chunkPos.x * Chunk::WIDTH + x;
+                int globalZ = chunkPos.z * Chunk::LENGTH + z;
+                
+                if (getBiomeAt(globalX, globalZ) == BiomeType::Desert)
+                {
+                    int surfaceY = findSurfaceHight(*newChunk, x, z);
+
+                    if (surfaceY != 0 && newChunk->blocks[x][surfaceY][z].type == BlockType::Sand)
+                    {
+                        // pseudo random
+                        float spawnChance = fnlGetNoise2D(&riverNoise, globalX * 50.f, globalZ * 50.f);
+
+                        if (spawnChance > 0.75f)
+                        {
+                            int cactusHeight = 2 + (int)((spawnChance - 0.75f) * 10.f) % 3;
+
+                            for (int h = 1; h <= cactusHeight; ++h)
+                            {
+                                if (surfaceY + h < Chunk::HEIGHT) 
+                                {
+                                    newChunk->blocks[x][surfaceY + h][z].type = BlockType::Cactus;
+                                }
+                            }
+                        }
+                    }
+                }
             }
+    }
     else
         std::cout << "Chunk loaded from memory!" << "\n";
 
@@ -589,4 +619,15 @@ BiomeType World::getBiomeAt(int globalX, int globalZ)
         if (m < -0.1f) return BiomeType::Tundra;
         else return BiomeType::Plains;
     }
+}
+
+int World::findSurfaceHight(const Chunk& chunk, int x, int z)
+{
+    for (int y = Chunk::HEIGHT - 2; y > 0; --y)
+    {
+        if (chunk.blocks[x][y][z].type != BlockType::Air && chunk.blocks[x][y + 1][z].type == BlockType::Air)
+            return y;
+    }
+
+    return 0;
 }

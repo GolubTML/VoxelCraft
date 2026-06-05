@@ -57,6 +57,16 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
 
         return calculateUV(2, 5);
     }
+    case BlockType::Cactus:
+    {
+        if (face == BlockFace::TOP)
+            return calculateUV(6, 13);
+
+        if (face == BlockFace::BOTTOM)
+            return calculateUV(6, 15); 
+
+        return calculateUV(6, 14);
+    }
     case BlockType::Water:
     {
         return calculateUV(2, 15);

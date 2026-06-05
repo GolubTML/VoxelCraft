@@ -11,7 +11,8 @@ enum BlockType : uint8_t
     SnowGrass,
     Stone,
     Sand,
-    Water // now, it's just a solid block. Need to make it transperent
+    Water, // now, it's just a solid block. Need to make it transperent
+    Cactus
 };
 
 enum BlockFace
