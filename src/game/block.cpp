@@ -37,6 +37,11 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
         return calculateUV(18, 5);
     }
 
+    case BlockType::Leaves:
+    {
+        return calculateUV(0, 2);
+    }
+
     case BlockType::Grass:
     {
         if (face == BlockFace::TOP)
@@ -67,6 +72,15 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
 
         return calculateUV(6, 14);
     }
+    
+    case BlockType::Oak:
+    {
+        if (face == BlockFace::TOP || face == BlockFace::BOTTOM)
+            return calculateUV(14, 2);
+
+        return calculateUV(13, 2);
+    }
+
     case BlockType::Water:
     {
         return calculateUV(2, 15);
@@ -100,6 +114,9 @@ glm::vec3 getBlockFaceColor(BlockType type, BlockFace face)
             return glm::vec3(1.5f, 1.5f, 1.5f);
         }
     }
+
+    if (type == BlockType::Leaves)
+        return glm::vec3(0.43f, 1.f, 0.24f);
 
     return glm::vec3(1.f);
 }

@@ -79,6 +79,9 @@ private:
     void threadLoop();
     void saveChunkToFile(const glm::ivec3& pos, const Chunk& chunk);
     bool loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk);
+
+    void generateCactuses(Chunk& chunk, int x, int z);
+    void generateTrees(Chunk& chunk, int x, int z);
     
     BlockType calculateBlockType(int globalX, int globalY, int globalZ);
     BlockType getBlockAt(const glm::ivec3& globalPos) const;

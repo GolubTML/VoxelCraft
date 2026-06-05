@@ -133,32 +133,8 @@ void World::generateChunks(const glm::ivec3& chunkPos)
         for (int x = 0; x < Chunk::WIDTH; ++x)
             for (int z = 0; z < Chunk::LENGTH; ++z)
             {
-                int globalX = chunkPos.x * Chunk::WIDTH + x;
-                int globalZ = chunkPos.z * Chunk::LENGTH + z;
-                
-                if (getBiomeAt(globalX, globalZ) == BiomeType::Desert)
-                {
-                    int surfaceY = findSurfaceHight(*newChunk, x, z);
-
-                    if (surfaceY != 0 && newChunk->blocks[x][surfaceY][z].type == BlockType::Sand)
-                    {
-                        // pseudo random
-                        float spawnChance = fnlGetNoise2D(&riverNoise, globalX * 50.f, globalZ * 50.f);
-
-                        if (spawnChance > 0.75f)
-                        {
-                            int cactusHeight = 2 + (int)((spawnChance - 0.75f) * 10.f) % 3;
-
-                            for (int h = 1; h <= cactusHeight; ++h)
-                            {
-                                if (surfaceY + h < Chunk::HEIGHT) 
-                                {
-                                    newChunk->blocks[x][surfaceY + h][z].type = BlockType::Cactus;
-                                }
-                            }
-                        }
-                    }
-                }
+                generateTrees(*newChunk, x, z);
+                generateCactuses(*newChunk, x, z);
             }
     }
     else
@@ -503,6 +479,93 @@ bool World::loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk)
     }
 
     return true;
+}
+
+void World::generateCactuses(Chunk& chunk, int x, int z)
+{
+    if (x < 2 || x > Chunk::WIDTH - 3 || z < 2 || z > Chunk::LENGTH - 3) 
+        return;
+
+    int globalX = chunk.pos.x * Chunk::WIDTH + x;
+    int globalZ = chunk.pos.z * Chunk::LENGTH + z;
+
+    if (getBiomeAt(globalX, globalZ) == BiomeType::Desert)
+    {
+        int surfaceY = findSurfaceHight(chunk, x, z);
+
+        if (surfaceY != 0 && chunk.blocks[x][surfaceY][z].type == BlockType::Sand)
+        {
+            // pseudo random
+            float spawnChance = fnlGetNoise2D(&riverNoise, globalX * 50.f, globalZ * 50.f);
+            
+            if (spawnChance > 0.75f)
+            {
+                int cactusHeight = 2 + (int)((spawnChance - 0.75f) * 10.f) % 3;
+
+                for (int h = 1; h <= cactusHeight; ++h)
+                {
+                    if (surfaceY + h < Chunk::HEIGHT) 
+                    {
+                        chunk.blocks[x][surfaceY + h][z].type = BlockType::Cactus;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void World::generateTrees(Chunk& chunk, int x, int z)
+{
+    if (x < 2 || x > Chunk::WIDTH - 3 || z < 2 || z > Chunk::LENGTH - 3) 
+        return; // this thing is cool, really. I dont need to deal with 'ghost' blocks in chunks
+
+    int globalX = chunk.pos.x * Chunk::WIDTH + x;
+    int globalZ = chunk.pos.z * Chunk::LENGTH + z;
+
+    if (getBiomeAt(globalX, globalZ) == BiomeType::Forest || getBiomeAt(globalX, globalZ) == BiomeType::Plains)
+    {
+        int surfaceY = findSurfaceHight(chunk, x, z);
+
+        if (surfaceY != 0 && chunk.blocks[x][surfaceY][z].type == BlockType::Grass)
+        {
+            float spawnChance = fnlGetNoise2D(&riverNoise, globalX * 50.f, globalZ * 50.f);
+            
+            if (spawnChance > 0.75f)
+            {
+                int treeHeight = 4 + (int)((spawnChance - 0.75f) * 10.f) % 3;
+                int trunkTopY = surfaceY + treeHeight;
+
+                for (int ly = trunkTopY - 1; ly <= trunkTopY; ++ly)
+                    for (int ox = -2; ox <= 2; ++ox)
+                        for (int oz = -2; oz <= 2; ++oz)
+                        {
+                            if (std::abs(ox) == 2 && std::abs(oz) == 2) continue;
+                            
+                            if (ly < Chunk::HEIGHT)
+                                chunk.blocks[x + ox][ly][z + oz].type = BlockType::Leaves;
+                        }
+
+                for (int ly = trunkTopY + 1; ly <= trunkTopY + 2; ++ly)
+                    for (int ox = -1; ox <= 1; ++ox)
+                        for (int oz = -1; oz <= 1; ++oz)
+                        {
+                            if (ly == trunkTopY + 2 && std::abs(ox) == 1 && std::abs(oz) == 1) continue;
+                            
+                            if (ly < Chunk::HEIGHT)
+                                chunk.blocks[x + ox][ly][z + oz].type = BlockType::Leaves;
+                        }
+
+
+                for (int h = 1; h <= treeHeight; ++h)
+                {
+                    if (surfaceY + h < Chunk::HEIGHT) 
+                    {
+                        chunk.blocks[x][surfaceY + h][z].type = BlockType::Oak;
+                    }
+                }
+            }
+        }
+    }
 }
 
 BlockType World::calculateBlockType(int globalX, int globalY, int globalZ)
