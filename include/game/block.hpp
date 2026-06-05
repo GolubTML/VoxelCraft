@@ -17,7 +17,9 @@ enum BlockType : uint8_t
     Leaves,
 
     Flower,
-    SmallGrass
+    SmallGrass,
+
+    Glass
 };
 
 enum BlockFace

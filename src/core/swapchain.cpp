@@ -209,6 +209,7 @@ VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfac
     // this is what type of RGB format surface uses
     for (const auto& format : availableFormats)
     {
+        // here is wrong format BUT it looks much better with it
         if (format.format == VK_FORMAT_B8G8R8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
             return format;

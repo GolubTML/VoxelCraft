@@ -9,6 +9,7 @@ bool isBlockTransparent(BlockType type)
     case Leaves:
     case Flower:
     case SmallGrass:
+    case Glass:
         return true;
     default:
         return false;
@@ -67,6 +68,11 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
     case BlockType::Leaves:
     {
         return calculateUV(1, 2);
+    }
+    
+    case BlockType::Glass:
+    {
+        return calculateUV(15, 12);
     }
 
     case BlockType::Grass:
