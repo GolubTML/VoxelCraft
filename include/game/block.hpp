@@ -14,7 +14,10 @@ enum BlockType : uint8_t
     Water, // now, it's just a solid block. Need to make it transperent
     Cactus,
     Oak,
-    Leaves
+    Leaves,
+
+    Flower,
+    SmallGrass
 };
 
 enum BlockFace
@@ -30,7 +33,11 @@ enum BlockFace
 struct Block
 {
     BlockType type = BlockType::Air;
+    // bool transparent = false;
 };
+
+bool isBlockTransparent(BlockType type);
+bool isBlockCrossed(BlockType type); // this is also bad, but this is the only way to make it
 
 // we need to calculate for texture in atlas, so, let's make new structure
 struct BlockUV

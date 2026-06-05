@@ -135,6 +135,7 @@ void World::generateChunks(const glm::ivec3& chunkPos)
             {
                 generateTrees(*newChunk, x, z);
                 generateCactuses(*newChunk, x, z);
+                generateFlowers(*newChunk, x, z);
             }
     }
     else
@@ -213,6 +214,36 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
         });
     };
 
+    auto addCrossFaces = [&](glm::vec3 pos, glm::vec3 color, BlockUV uv)
+    {
+        uint32_t start = vertices.size();
+
+        float x0 = uv.topLeft.x;
+        float y0 = uv.topLeft.y;
+        float x1 = uv.bottomRight.x;
+        float y1 = uv.bottomRight.y;
+
+        vertices.push_back({pos + glm::vec3(0, 0, 0), color, {x1, y0}});
+        vertices.push_back({pos + glm::vec3(1, 0, 1), color, {x0, y0}});
+        vertices.push_back({pos + glm::vec3(1, 1, 1), color, {x0, y1}});
+        vertices.push_back({pos + glm::vec3(0, 1, 0), color, {x1, y1}});
+
+        vertices.push_back({pos + glm::vec3(1, 0, 0), color, {x1, y0}});
+        vertices.push_back({pos + glm::vec3(0, 0, 1), color, {x0, y0}});
+        vertices.push_back({pos + glm::vec3(0, 1, 1), color, {x0, y1}});
+        vertices.push_back({pos + glm::vec3(1, 1, 0), color, {x1, y1}});
+
+        for (uint32_t i = 0; i < 2; ++i) 
+        {
+            uint32_t offset = start + i * 4;
+            indices.insert(indices.end(), 
+            {
+                offset + 0, offset + 1, offset + 2,
+                offset + 2, offset + 3, offset + 0
+            });
+        }
+    };
+
     for (int x = 0; x < Chunk::WIDTH; ++x)
         for (int y = 0; y < Chunk::HEIGHT; ++y)
             for (int z = 0; z < Chunk::LENGTH; ++z)
@@ -222,11 +253,24 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                     continue;
 
                 glm::vec3 localPos(x, y, z);
+
+                if (isBlockCrossed(currentType))
+                {
+                    BlockUV uv = getBlockTextureUV(currentType, BlockFace::FRONT); // we dont even have defenition of face here
+                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::FRONT);
+
+                    addCrossFaces(localPos, color, uv);
+                    continue;
+                }
+
                 glm::ivec3 globalPos(chunk.pos.x * Chunk::WIDTH + x, chunk.pos.y * Chunk::HEIGHT + y, chunk.pos.z * Chunk::LENGTH + z);
 
+                #pragma region Adding faces to cube mesh 
                 // for each face, we need check for neighbour
                 // +x axis
-                if (getBlockAt(globalPos + glm::ivec3(1, 0, 0)) == BlockType::Air)
+
+                BlockType neighborRight = getBlockAt(globalPos + glm::ivec3(1, 0, 0));
+                if (neighborRight == BlockType::Air || (isBlockTransparent(neighborRight) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::RIGHT);
                     glm::vec3 color = getBlockFaceColor(currentType, BlockFace::RIGHT);
@@ -234,7 +278,8 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 }
                 
                 // -x axis
-                if (getBlockAt(globalPos + glm::ivec3(-1, 0, 0)) == BlockType::Air)
+                BlockType neighborLeft = getBlockAt(globalPos + glm::ivec3(-1, 0, 0));
+                if (neighborLeft == BlockType::Air || (isBlockTransparent(neighborLeft) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::LEFT);
                     glm::vec3 color = getBlockFaceColor(currentType, BlockFace::LEFT);
@@ -242,7 +287,8 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 }
 
                 // +y axis
-                if (getBlockAt(globalPos + glm::ivec3(0, 1, 0)) == BlockType::Air)
+                BlockType neighborTop = getBlockAt(globalPos + glm::ivec3(0, 1, 0));
+                if (neighborTop == BlockType::Air || (isBlockTransparent(neighborTop) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::TOP);
                     glm::vec3 color = getBlockFaceColor(currentType, BlockFace::TOP);
@@ -250,7 +296,8 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 }
 
                 // -y axis
-                if (getBlockAt(globalPos + glm::ivec3(0, -1, 0)) == BlockType::Air)
+                BlockType neighborBottom = getBlockAt(globalPos + glm::ivec3(0, -1, 0));
+                if (neighborBottom == BlockType::Air || (isBlockTransparent(neighborBottom) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::BOTTOM);
                     glm::vec3 color = getBlockFaceColor(currentType, BlockFace::BOTTOM);
@@ -258,7 +305,8 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 }
 
                 // +z axis
-                if (getBlockAt(globalPos + glm::ivec3(0, 0, 1)) == BlockType::Air)
+                BlockType neighborFront = getBlockAt(globalPos + glm::ivec3(0, 0, 1));
+                if (neighborFront == BlockType::Air || (isBlockTransparent(neighborFront) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::FRONT);
                     glm::vec3 color = getBlockFaceColor(currentType, BlockFace::FRONT);
@@ -266,12 +314,15 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 }
 
                 // -z axis
-                if (getBlockAt(globalPos + glm::ivec3(0, 0, -1)) == BlockType::Air)
+                BlockType neighborBack = getBlockAt(globalPos + glm::ivec3(0, 0, -1));
+                if (neighborBack == BlockType::Air || (isBlockTransparent(neighborBack) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::BACK);
                     glm::vec3 color = getBlockFaceColor(currentType, BlockFace::BACK);
                     addFace(localPos, color, BlockFace::BACK, uv);
                 }
+
+                #pragma endregion
             } 
 
     chunk.modelMatrix = glm::translate(glm::mat4(1.0f), 
@@ -562,6 +613,40 @@ void World::generateTrees(Chunk& chunk, int x, int z)
                     {
                         chunk.blocks[x][surfaceY + h][z].type = BlockType::Oak;
                     }
+                }
+            }
+        }
+    }
+}
+
+void World::generateFlowers(Chunk& chunk, int x, int z)
+{
+    int globalX = chunk.pos.x * Chunk::WIDTH + x;
+    int globalZ = chunk.pos.z * Chunk::LENGTH + z;
+
+    BiomeType biome = getBiomeAt(globalX, globalZ);
+    if (biome == BiomeType::Desert) return;
+
+    int surfaceY = findSurfaceHight(chunk, x, z);
+
+    if (surfaceY > 0)
+    {
+        BlockType surfaceBlock = chunk.blocks[x][surfaceY][z].type;
+        bool isValidSoil = (surfaceBlock == BlockType::Grass);
+        
+        if (isValidSoil && chunk.blocks[x][surfaceY + 1][z].type == BlockType::Air)
+        {
+            float plantNoise = fnlGetNoise2D(&riverNoise, globalX * 30.f, globalZ * 30.f);
+
+            if (plantNoise > 0.6f) 
+            {
+                if (plantNoise > 0.75f)
+                {
+                    chunk.blocks[x][surfaceY + 1][z].type = BlockType::Flower;
+                }
+                else
+                {
+                    chunk.blocks[x][surfaceY + 1][z].type = BlockType::SmallGrass;
                 }
             }
         }

@@ -1,5 +1,32 @@
 #include <game/block.hpp>
 
+bool isBlockTransparent(BlockType type)
+{
+    switch (type)
+    {
+    case Air:
+    case Water:
+    case Leaves:
+    case Flower:
+    case SmallGrass:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool isBlockCrossed(BlockType type)
+{
+    switch (type)
+    {
+    case Flower:
+    case SmallGrass:
+        return true;
+    default:
+        return false;
+    }
+}
+
 BlockUV calculateUV(int gridX, int gridY)
 {
     // it's hard coded, but for now it's okey
@@ -39,7 +66,7 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
 
     case BlockType::Leaves:
     {
-        return calculateUV(0, 2);
+        return calculateUV(1, 2);
     }
 
     case BlockType::Grass:
@@ -86,6 +113,16 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
         return calculateUV(2, 15);
     }
 
+    case BlockType::Flower:
+    {
+        return calculateUV(14, 13);
+    }
+    
+    case BlockType::SmallGrass:
+    {
+        return calculateUV(10, 15);
+    }
+
     case BlockType::UNKNOW:
         return calculateUV(5, 1);
 
@@ -115,7 +152,7 @@ glm::vec3 getBlockFaceColor(BlockType type, BlockFace face)
         }
     }
 
-    if (type == BlockType::Leaves)
+    if (type == BlockType::Leaves || type == BlockType::SmallGrass)
         return glm::vec3(0.43f, 1.f, 0.24f);
 
     return glm::vec3(1.f);

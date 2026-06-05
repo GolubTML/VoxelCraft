@@ -82,6 +82,7 @@ private:
 
     void generateCactuses(Chunk& chunk, int x, int z);
     void generateTrees(Chunk& chunk, int x, int z);
+    void generateFlowers(Chunk& chunk, int x, int z);
     
     BlockType calculateBlockType(int globalX, int globalY, int globalZ);
     BlockType getBlockAt(const glm::ivec3& globalPos) const;
