@@ -40,30 +40,33 @@ public:
     void updatePlayerPos(const glm::vec3& playerPos);
 
     void generateChunks(const glm::ivec3& chunkPos);
-    void generateMeshForChunks(Device& device, Chunk& chunk);
-
+    
     BlockType getBlockAt(const glm::ivec3& globalPos) const;
-
+    
     const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& getChunks() const;
-
+    
     std::mutex& getChunkMutex() const;
-
-private:
+    
+    private:
     Device* devicePtr = nullptr;
-
+    
     fnl_state noise;
     int worldSeed;
-
+    
     std::thread generationThread;
     mutable std::mutex chunksMutex;
     std::atomic<bool> isRunning{false};
-
+    
     std::atomic<int> playerChunkX{0};
     std::atomic<int> playerChunkZ{0};
 
     std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare> chunks;
-
+    
+    std::pair<std::vector<Vertex>, std::vector<uint32_t>> generateMeshData(Chunk& chunk);
+    
     void threadLoop();
+    void saveChunkToFile(const glm::ivec3& pos, const Chunk& chunk);
+    bool loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk);
 
     BlockType calculateBlockType(int globalX, int globalY, int globalZ);
 };

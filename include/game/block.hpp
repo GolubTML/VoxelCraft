@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-enum BlockType
+enum BlockType : uint8_t
 {
     Air, 
     UNKNOW,

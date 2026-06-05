@@ -13,7 +13,7 @@ Camera::~Camera() { }
 
 void Camera::move(GLFWwindow* window, float deltaTime)
 {
-    float velocity = 3.f * deltaTime;
+    float velocity = 8.f * deltaTime;
 
     glm::vec3 right = glm::normalize(glm::cross(front, up));
 

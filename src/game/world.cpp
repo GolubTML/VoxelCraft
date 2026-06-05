@@ -4,6 +4,8 @@
 #include <core/device.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 World::World(int seed) : worldSeed(seed)
 {
@@ -13,6 +15,18 @@ World::World(int seed) : worldSeed(seed)
     noise.fractal_type = FNL_FRACTAL_FBM;
     noise.octaves = 4;
     noise.frequency = 0.005f;
+
+    std::filesystem::path worldSaveDir = "world_save";
+
+    try
+    {
+        std::filesystem::remove_all(worldSaveDir); 
+        std::cout << "Folder " << worldSaveDir << " was deleted!" << "\n";
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        std::cout << "Error was found, while deleting files in 'world_save' folder: " << e.what() << "\n";
+    }
 }
 
 World::~World() 
@@ -26,8 +40,6 @@ World::~World()
 
 void World::initWorldThread(Device& device)
 {
-    std::cout << "Hello from separete thread!" << "\n";
-
     devicePtr = &device;
     isRunning = true;
 
@@ -59,6 +71,18 @@ void World::cleanup(VkDevice device)
         if (chunk)   
             chunk->cleanup(device);
 
+    std::filesystem::path worldSaveDir = "world_save";
+
+    try
+    {
+        std::filesystem::remove_all(worldSaveDir); 
+        std::cout << "Folder " << worldSaveDir << " was deleted!" << "\n";
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        std::cout << "Error was found, while deleting files in 'world_save' folder: " << e.what() << "\n";
+    }
+
     chunks.clear();
 }
 
@@ -69,21 +93,27 @@ void World::generateChunks(const glm::ivec3& chunkPos)
     auto newChunk = std::make_unique<Chunk>();
     newChunk->pos = chunkPos;
 
-    for (int x = 0; x < Chunk::WIDTH; ++x)
-        for (int y = 0; y < Chunk::HEIGHT; ++y)
-            for (int z = 0; z < Chunk::LENGTH; ++z)
-            {
-                int globalX = chunkPos.x * Chunk::WIDTH + x;
-                int globalY = chunkPos.y * Chunk::HEIGHT + y;
-                int globalZ = chunkPos.z * Chunk::LENGTH + z;
+    if (!loadChunkFromFile(chunkPos, *newChunk))
+    {
+        for (int x = 0; x < Chunk::WIDTH; ++x)
+            for (int y = 0; y < Chunk::HEIGHT; ++y)
+                for (int z = 0; z < Chunk::LENGTH; ++z)
+                {
+                    int globalX = chunkPos.x * Chunk::WIDTH + x;
+                    int globalY = chunkPos.y * Chunk::HEIGHT + y;
+                    int globalZ = chunkPos.z * Chunk::LENGTH + z;
 
-                newChunk->blocks[x][y][z].type = calculateBlockType(globalX, globalY, globalZ);
+                    newChunk->blocks[x][y][z].type = calculateBlockType(globalX, globalY, globalZ);
+                }
+
             }
+    else
+        std::cout << "Chunk loaded from memory!" << "\n";
 
     chunks[chunkPos] = std::move(newChunk);
 }
 
-void World::generateMeshForChunks(Device& device, Chunk& chunk)
+std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Chunk& chunk)
 {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -214,15 +244,12 @@ void World::generateMeshForChunks(Device& device, Chunk& chunk)
                 }
             } 
 
-    if (!vertices.empty()) 
-    {
-        chunk.mesh.create(device, vertices, indices);
-    }
-
     chunk.modelMatrix = glm::translate(glm::mat4(1.0f), 
         glm::vec3(chunk.pos.x * Chunk::WIDTH, 
             chunk.pos.y * Chunk::HEIGHT, 
             chunk.pos.z * Chunk::LENGTH));
+
+    return {vertices, indices};
 }
 
 BlockType World::getBlockAt(const glm::ivec3& globalPos) const
@@ -255,7 +282,8 @@ std::mutex& World::getChunkMutex() const
 
 void World::threadLoop()
 {
-    int renderRadius = 2;
+    int renderRadius = 3;
+    int unloadRadius = renderRadius + 2;
 
     while (isRunning)
     {
@@ -306,24 +334,95 @@ void World::threadLoop()
             }
 
         {
-            std::lock_guard<std::mutex> lock(chunksMutex);
-
             for (int cx = currentX - renderRadius; cx <= currentX + renderRadius; ++cx) 
-                for (int cz = currentZ - renderRadius; cz <= currentZ + renderRadius; ++cz) {
+                for (int cz = currentZ - renderRadius; cz <= currentZ + renderRadius; ++cz) 
+                {
                     glm::ivec3 pos(cx, 0, cz);
-                    auto it = chunks.find(pos);
+                    Chunk* chunkToUpdate = nullptr;
 
-                    
-                    if (it != chunks.end() && it->second && it->second->needUpdate) 
                     {
-                        generateMeshForChunks(*devicePtr, *it->second);
-                        it->second->needUpdate = false;
+                        std::lock_guard<std::mutex> lock(chunksMutex);
+                        auto it = chunks.find(pos);
+
+                        if (it != chunks.end() && it->second && it->second->needUpdate)
+                            chunkToUpdate = it->second.get();
+                    }
+
+                    if (chunkToUpdate)
+                    {
+                        auto [vertices, indices] = generateMeshData(*chunkToUpdate);
+
+                        {
+                            std::lock_guard<std::mutex> lock(chunksMutex);
+
+                            auto it = chunks.find(pos);
+                            if (it != chunks.end() && it->second) 
+                            {
+                                if (!vertices.empty())
+                                    it->second->mesh.create(*devicePtr, vertices, indices);
+        
+                                it->second->needUpdate = false;
+                            }
+                        }
                     }
                 }
         }
 
+        {
+            std::lock_guard<std::mutex> lock(chunksMutex);
+
+            for (auto it = chunks.begin(); it != chunks.end(); /*nothing*/)
+            {
+                glm::ivec3 itPos = it->first;
+
+                int distanceX = std::abs(playerChunkX - itPos.x);
+                int distanceZ = std::abs(playerChunkZ - itPos.z);
+
+                if (distanceX > unloadRadius || distanceZ > unloadRadius)
+                {
+                    if (it->second)
+                    {
+                        saveChunkToFile(itPos, *(it->second));
+
+                        it->second->mesh.cleanup(devicePtr->getDevice());
+                    }
+
+                    it = chunks.erase(it);
+                }
+                else
+                {
+                    it++;
+                }
+            }
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+}
+
+void World::saveChunkToFile(const glm::ivec3& pos, const Chunk& chunk)
+{
+    std::filesystem::create_directories("world_save");
+
+    const std::string fileName = "world_save/chunk_" + std::to_string(pos.x) + "_" + std::to_string(pos.y) + "_" + std::to_string(pos.z) + ".dat"; 
+
+    std::ofstream out(fileName, std::ios::binary);
+    if (!out.is_open()) return;
+
+    out.write(reinterpret_cast<const char*>(chunk.blocks), sizeof(chunk.blocks));
+}
+
+bool World::loadChunkFromFile(const glm::ivec3& pos, Chunk& chunk)
+{
+    const std::string fileName = "world_save/chunk_" + std::to_string(pos.x) + "_" + std::to_string(pos.y) + "_" + std::to_string(pos.z) + ".dat"; 
+
+    if (!std::filesystem::exists(fileName)) return false; // we dont have any information about this chunk right now
+
+    std::ifstream in(fileName, std::ios::binary);
+    if (!in.is_open()) return false;
+
+    in.read(reinterpret_cast<char*>(chunk.blocks), sizeof(chunk.blocks));
+    return true;
 }
 
 BlockType World::calculateBlockType(int globalX, int globalY, int globalZ)
