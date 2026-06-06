@@ -85,16 +85,22 @@ void World::updatePlayerPos(const glm::vec3& playerPos)
     playerChunkZ = cz;
 }
 
-void World::uploadChunksToGpu(const Renderer& renderer)
+void World::uploadChunksToGpu(const Renderer& renderer, GarbageCollector& gc, uint32_t currentFrame)
 {
     std::lock_guard<std::mutex> lock(chunksMutex);
+
+    for (const auto& dead : clearQueue)
+    {
+        gc.pushBuffer(dead.buffer, dead.memory, currentFrame);
+    }
+    
+    clearQueue.clear();
 
     for (auto& [pos, chunk] : chunks)
     {
         if (chunk && chunk->hasNewMeshData)
         {
-            vkQueueWaitIdle(renderer.getGraphicsQueue()); // -- NEED TO BE FIXED
-            chunk->mesh.create(*devicePtr, chunk->tempVertices, chunk->tempIndices);
+            chunk->mesh.create(*devicePtr, chunk->tempVertices, chunk->tempIndices, gc, currentFrame);
 
             chunk->tempVertices.clear();
             chunk->tempIndices.clear();
@@ -475,7 +481,14 @@ void World::threadLoop()
                     {
                         saveChunkToFile(itPos, *(it->second));
 
-                        it->second->mesh.cleanup(devicePtr->getDevice());
+                        if (it->second->mesh.vertexBuffer.buffer != VK_NULL_HANDLE) 
+                        {
+                            clearQueue.push_back({it->second->mesh.vertexBuffer.buffer, it->second->mesh.vertexBuffer.memory});
+                        }
+                        if (it->second->mesh.indexBuffer.buffer != VK_NULL_HANDLE) 
+                        {
+                            clearQueue.push_back({it->second->mesh.indexBuffer.buffer, it->second->mesh.indexBuffer.memory});
+                        }
                     }
 
                     it = chunks.erase(it);

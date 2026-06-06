@@ -84,6 +84,9 @@ void Engine::mainLoop()
         mainCamera.move(window, deltaTime);
         frustumCam.update(mainCamera.getCameraProjection() * mainCamera.getCameraView());
 
+        uint32_t frameIndex = renderer.getCurrentFrame();
+        gc.cleanupFrame(device.getDevice(), frameIndex);
+
         DebugInfo info{};
         info.playerPos = mainCamera.pos;
         info.chunksInMemory = world->getChunks().size();
@@ -93,11 +96,12 @@ void Engine::mainLoop()
         info.deltaTime = deltaTime;
 
         world->updatePlayerPos(mainCamera.pos);
-        world->uploadChunksToGpu(renderer);
+        world->uploadChunksToGpu(renderer, gc, frameIndex);
         
         renderer.presentFrame(pipeline, mainCamera, 
             frustumCam, debugWindow, 
             *world, info);
+
         input();
     }
 
@@ -109,6 +113,7 @@ void Engine::cleanup()
     Debug::destroyDebugMessenger(instance, debugMessenger);
 
     testTexture.cleanup(device);
+    gc.cleanup(device.getDevice());
 
     world->cleanup(device.getDevice());
     debugWindow.cleanup(device);

@@ -13,6 +13,7 @@
 
 #include <game/block.hpp>
 #include <game/chunk.hpp>
+#include <core/garbageCollector.hpp>
 
 struct ChunkPosCompare 
 {
@@ -47,7 +48,7 @@ public:
     void cleanup(VkDevice device);
 
     void updatePlayerPos(const glm::vec3& playerPos);
-    void uploadChunksToGpu(const Renderer& renderer);
+    void uploadChunksToGpu(const Renderer& renderer, GarbageCollector& gc, uint32_t currentFrame);
 
     void generateChunks(const glm::ivec3& chunkPos);
     
@@ -92,4 +93,6 @@ private:
     BiomeType getBiomeAt(int globalX, int globalZ);
 
     int findSurfaceHight(const Chunk& chunk, int x, int z);
+
+    std::vector<GarbageCollector::GarbageBuffer> clearQueue;
 };

@@ -136,6 +136,11 @@ VkDescriptorPool Renderer::getDescriptionPool() const
     return descriptorPool;
 }
 
+uint32_t Renderer::getCurrentFrame() const
+{
+    return currentFrame;
+}
+
 uint32_t Renderer::getAllRendererChunks() const
 {
     return renderedChunks;

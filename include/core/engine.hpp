@@ -18,6 +18,7 @@
 #include <renderer/texture.hpp>
 #include <core/frustum.hpp>
 #include <renderer/debugWindow.hpp>
+#include <core/garbageCollector.hpp>
 #include <memory>
 
 class Engine
@@ -29,6 +30,7 @@ private:
     GLFWwindow* window = nullptr;
     DebugWindow debugWindow;
     VkInstance instance;
+    GarbageCollector gc;
     VkDebugUtilsMessengerEXT debugMessenger;
     // Devices
     Device device;

@@ -1,5 +1,6 @@
 #include <renderer/mesh.hpp>
 #include <core/device.hpp>
+#include <core/garbageCollector.hpp>
 
 VkVertexInputBindingDescription Vertex::getBindingDescription()
 {
@@ -37,13 +38,25 @@ std::array<VkVertexInputAttributeDescription, 3> Vertex::getAttributeDescription
     return attributeDescription;
 }
 
-void Mesh::create(Device& device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+void Mesh::create(Device& device, 
+        const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
+        GarbageCollector& gc, uint32_t currFrame)
 {
     if (vertexBuffer.buffer != VK_NULL_HANDLE)
-        vertexBuffer.cleanup(device.getDevice());
+    {
+        gc.pushBuffer(vertexBuffer.buffer, vertexBuffer.memory, currFrame);
+
+        vertexBuffer.buffer = VK_NULL_HANDLE;
+        vertexBuffer.memory = VK_NULL_HANDLE;
+    }
 
     if (indexBuffer.buffer != VK_NULL_HANDLE)
-        indexBuffer.cleanup(device.getDevice());
+    {
+        gc.pushBuffer(indexBuffer.buffer, indexBuffer.memory, currFrame);
+        
+        indexBuffer.buffer = VK_NULL_HANDLE;
+        indexBuffer.memory = VK_NULL_HANDLE;
+    }
 
     VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
     vertexBuffer.create(device.getPhysicalDevice(), device.getDevice(), bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data());

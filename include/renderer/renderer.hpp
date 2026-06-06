@@ -36,6 +36,7 @@ public:
     VkCommandPool getCommandPool() const;
     VkDescriptorPool getDescriptionPool() const;
 
+    uint32_t getCurrentFrame() const;
     uint32_t getAllRendererChunks() const;
 
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
