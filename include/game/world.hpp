@@ -27,6 +27,7 @@ struct ChunkPosCompare
 
 class Chunk;
 class Device;
+class Renderer;
 
 enum BiomeType : uint8_t
 {
@@ -46,7 +47,7 @@ public:
     void cleanup(VkDevice device);
 
     void updatePlayerPos(const glm::vec3& playerPos);
-    void uploadChunksToGpu();
+    void uploadChunksToGpu(const Renderer& renderer);
 
     void generateChunks(const glm::ivec3& chunkPos);
     

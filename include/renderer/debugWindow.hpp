@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <vector>
 
 class Device;
 class SwapChain;
@@ -15,6 +16,7 @@ struct DebugInfo
     int renderedChunks;
     int fps;
     int worldSeed;
+    float deltaTime;
 };
 
 class DebugWindow
@@ -27,7 +29,7 @@ public:
     void presentWindow(VkCommandBuffer buffer, DebugInfo& info);
 private:
     VkDescriptorPool imGuiDescriptionPool;
-    float lastTime = 0.f;
+    std::vector<float> frameTimeHistory;
 
     void createOwnDescriptionPool(const Device& device);
 

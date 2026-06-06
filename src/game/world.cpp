@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <renderer/renderer.hpp>
 
 World::World(int seed) : worldSeed(seed)
 {
@@ -84,7 +85,7 @@ void World::updatePlayerPos(const glm::vec3& playerPos)
     playerChunkZ = cz;
 }
 
-void World::uploadChunksToGpu()
+void World::uploadChunksToGpu(const Renderer& renderer)
 {
     std::lock_guard<std::mutex> lock(chunksMutex);
 
@@ -92,6 +93,7 @@ void World::uploadChunksToGpu()
     {
         if (chunk && chunk->hasNewMeshData)
         {
+            vkQueueWaitIdle(renderer.getGraphicsQueue()); // -- NEED TO BE FIXED
             chunk->mesh.create(*devicePtr, chunk->tempVertices, chunk->tempIndices);
 
             chunk->tempVertices.clear();

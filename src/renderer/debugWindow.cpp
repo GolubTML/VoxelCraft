@@ -38,6 +38,8 @@ void DebugWindow::initImGuiWindow(GLFWwindow* window, VkInstance instance,
     initInfo.RenderPass = renderer.getRenderPass();
 
     ImGui_ImplVulkan_Init(&initInfo);
+
+    frameTimeHistory.resize(120, 0.f);
 }
 
 void DebugWindow::cleanup(const Device& device)
@@ -47,15 +49,55 @@ void DebugWindow::cleanup(const Device& device)
     ImGui::DestroyContext();
 
     vkDestroyDescriptorPool(device.getDevice(), imGuiDescriptionPool, nullptr);
+    frameTimeHistory.clear();
 }
 
 void DebugWindow::presentWindow(VkCommandBuffer buffer, DebugInfo& info)
 {
     startFrame();
 
+    static float smoothedFps = 60.0f; 
+    if (info.fps > 0) 
+    {
+        smoothedFps = (smoothedFps * 0.95f) + (static_cast<float>(info.fps) * 0.05f);
+    }
+
+    size_t targetSize = static_cast<size_t>(smoothedFps * 1.5f);
+
+    if (targetSize < 100)  targetSize = 100;
+    if (targetSize > 1000) targetSize = 1000;
+
+    if (frameTimeHistory.size() < targetSize) 
+    {
+        frameTimeHistory.insert(frameTimeHistory.end(), targetSize - frameTimeHistory.size(), 0.f);
+    } 
+    else if (frameTimeHistory.size() > targetSize) 
+    {
+        frameTimeHistory.erase(frameTimeHistory.begin(), frameTimeHistory.begin() + (frameTimeHistory.size() - targetSize));
+    }
+
+    frameTimeHistory.erase(frameTimeHistory.begin());
+    frameTimeHistory.push_back(info.deltaTime * 1000.f);
+
     ImGui::Begin("Performance");
+    ImGui::Separator();
+
     ImGui::Text("FPS count: %i", info.fps);
-    ImGui::Text("Player position: x:%f, y:%f, z:%f", info.playerPos.x, info.playerPos.y, info.playerPos.z);
+    ImGui::Text("Frame time (ms): %.2f", (info.deltaTime * 1000.f));
+
+    ImVec2 graphSize = ImVec2(0, 60);
+
+    ImGui::PlotLines("##frametime_graph", frameTimeHistory.data(), 
+        static_cast<int>(frameTimeHistory.size()), 0, 
+        "Frame Time (ms)", 0.0f, FLT_MAX,
+        graphSize);
+
+    ImGui::Separator();
+
+    ImGui::Text("Player position: x:%.2f, y:%.2f, z:%.2f", info.playerPos.x, info.playerPos.y, info.playerPos.z);
+    
+    ImGui::Separator();
+        
     ImGui::Text("Current chunks in memory: %i", info.chunksInMemory);
     ImGui::Text("Chunks rendered: %i", info.renderedChunks);
     ImGui::Text("World seed: %i", info.worldSeed);

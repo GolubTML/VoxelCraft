@@ -83,16 +83,17 @@ void Engine::mainLoop()
 
         mainCamera.move(window, deltaTime);
         frustumCam.update(mainCamera.getCameraProjection() * mainCamera.getCameraView());
-        
+
         DebugInfo info{};
         info.playerPos = mainCamera.pos;
         info.chunksInMemory = world->getChunks().size();
         info.renderedChunks = renderer.getAllRendererChunks();
         info.fps = (int)(1.f / deltaTime);
         info.worldSeed = world->getWorldSeed();
+        info.deltaTime = deltaTime;
 
         world->updatePlayerPos(mainCamera.pos);
-        world->uploadChunksToGpu();
+        world->uploadChunksToGpu(renderer);
         
         renderer.presentFrame(pipeline, mainCamera, 
             frustumCam, debugWindow, 
