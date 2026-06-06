@@ -350,6 +350,11 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
     return {vertices, indices};
 }
 
+const int World::getWorldSeed() const
+{
+    return worldSeed;
+}
+
 const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& World::getChunks() const
 {
     return chunks;

@@ -52,7 +52,9 @@ void Renderer::cleanup(VkDevice device)
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, DebugWindow& dW, const World& world)
+void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, 
+    const Frustum& fCam, DebugWindow& dW, 
+    const World& world, DebugInfo& info)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -69,7 +71,9 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, cons
     // and now, we can record commands in buffer
     // but, we need to reset whole buffer
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, fCam, pipeline, dW, world);
+    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, 
+        fCam, pipeline, 
+        dW, world, info);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -130,6 +134,11 @@ VkCommandPool Renderer::getCommandPool() const
 VkDescriptorPool Renderer::getDescriptionPool() const
 {
     return descriptorPool;
+}
+
+uint32_t Renderer::getAllRendererChunks() const
+{
+    return renderedChunks;
 }
 
 const std::vector<VkCommandBuffer>& Renderer::getCommandBuffers() const
@@ -389,8 +398,12 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, DebugWindow& dW, const World& world)
+void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
+    const Frustum& fCam, const Pipeline& pipeline, 
+    DebugWindow& dW, const World& world, DebugInfo& info)
 {
+    renderedChunks = 0;
+
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0;
@@ -441,20 +454,11 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
     scissor.extent = swapchain->swapChainExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    /*// vertex buffer
-    VkBuffer vertexBuffers[] = {mesh.vertexBuffer.buffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
-    // and index
-    vkCmdBindIndexBuffer(buffer, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);*/
-
     vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     {
         // we added new thread, so, we should also use mutex, for sync
         std::lock_guard<std::mutex> lock(world.getChunkMutex());
-
-        int rendererChunks = 0;
 
         for (auto& [pos, chunk] : world.getChunks())
         {
@@ -484,13 +488,11 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
 
             // and draw it
             vkCmdDrawIndexed(buffer, chunk->mesh.indexCount, 1, 0, 0, 0);
-            ++rendererChunks;
+            ++renderedChunks;
         }
-
-        std::cout << "All chunks in memory: " << world.getChunks().size() << " Chunks renderer: " << rendererChunks << "\n";
     }
     
-    dW.presentWindow(buffer);
+    dW.presentWindow(buffer, info);
     // and finish
     vkCmdEndRenderPass(buffer);
 

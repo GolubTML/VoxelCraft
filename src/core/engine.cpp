@@ -78,22 +78,25 @@ void Engine::mainLoop()
         float currentTime = glfwGetTime();
         float deltaTime = currentTime - lastTime;
         lastTime = currentTime;
-
-        int fps = (int)(1.f / deltaTime);
-        std::string title = "VoxelCraft: " + std::to_string(fps);
-
-        glfwSetWindowTitle(window, title.c_str());
         
         glfwPollEvents();
 
-        
         mainCamera.move(window, deltaTime);
         frustumCam.update(mainCamera.getCameraProjection() * mainCamera.getCameraView());
         
+        DebugInfo info{};
+        info.playerPos = mainCamera.pos;
+        info.chunksInMemory = world->getChunks().size();
+        info.renderedChunks = renderer.getAllRendererChunks();
+        info.fps = (int)(1.f / deltaTime);
+        info.worldSeed = world->getWorldSeed();
+
         world->updatePlayerPos(mainCamera.pos);
         world->uploadChunksToGpu();
         
-        renderer.presentFrame(pipeline, mainCamera, frustumCam, debugWindow, *world);
+        renderer.presentFrame(pipeline, mainCamera, 
+            frustumCam, debugWindow, 
+            *world, info);
         input();
     }
 

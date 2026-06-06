@@ -49,11 +49,16 @@ void DebugWindow::cleanup(const Device& device)
     vkDestroyDescriptorPool(device.getDevice(), imGuiDescriptionPool, nullptr);
 }
 
-void DebugWindow::presentWindow(VkCommandBuffer buffer)
+void DebugWindow::presentWindow(VkCommandBuffer buffer, DebugInfo& info)
 {
     startFrame();
-    
-    ImGui::Begin("Hi!");
+
+    ImGui::Begin("Performance");
+    ImGui::Text("FPS count: %i", info.fps);
+    ImGui::Text("Player position: x:%f, y:%f, z:%f", info.playerPos.x, info.playerPos.y, info.playerPos.z);
+    ImGui::Text("Current chunks in memory: %i", info.chunksInMemory);
+    ImGui::Text("Chunks rendered: %i", info.renderedChunks);
+    ImGui::Text("World seed: %i", info.worldSeed);
 
     endFrame(buffer);
 }

@@ -50,8 +50,8 @@ public:
 
     void generateChunks(const glm::ivec3& chunkPos);
     
+    const int getWorldSeed() const;
     const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& getChunks() const;
-    
     std::mutex& getChunkMutex() const;
     
 private:

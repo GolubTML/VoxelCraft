@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include <renderer/mesh.hpp>
+#include <renderer/debugWindow.hpp>
 #include <core/buffer.hpp>
 #include <vector>
 
@@ -26,12 +27,16 @@ public:
     // BAD. Need new architecture for this
     void createDescriptorSet(const Pipeline& pipeline, const Texture2D& texture);
 
-    void presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, DebugWindow& dW, const World& world);
+    void presentFrame(const Pipeline& pipeline, const Camera& camera, 
+        const Frustum& fCam, DebugWindow& dW, 
+        const World& world, DebugInfo& info);
 
     VkRenderPass getRenderPass() const;
     VkQueue getGraphicsQueue() const;
     VkCommandPool getCommandPool() const;
     VkDescriptorPool getDescriptionPool() const;
+
+    uint32_t getAllRendererChunks() const;
 
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
 
@@ -57,6 +62,7 @@ private:
     std::vector<VkDescriptorSet> descriptorSets;
     
     uint32_t currentFrame = 0;
+    uint32_t renderedChunks = 0; // maybe bad idea
 
     // descriptors
     void createDescriptorPool();
@@ -70,5 +76,7 @@ private:
     void createRenderPass();
     void createCommandPool(Device& device, VkSurfaceKHR surface);
     void createCommandBuffers();
-    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, DebugWindow& dW, const World& world);
+    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
+        const Frustum& fCam, const Pipeline& pipeline, 
+        DebugWindow& dW, const World& world, DebugInfo& info);
 };
