@@ -17,6 +17,7 @@
 #include <game/world.hpp>
 #include <renderer/texture.hpp>
 #include <core/frustum.hpp>
+#include <renderer/debugWindow.hpp>
 #include <memory>
 
 class Engine
@@ -26,6 +27,7 @@ public:
 
 private:
     GLFWwindow* window = nullptr;
+    DebugWindow debugWindow;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
     // Devices
@@ -53,5 +55,8 @@ private:
     void mainLoop();
     void cleanup();
     void createInstance();
+
+    void input();
+
     std::vector<const char*> getRequiredExtentions();
 };

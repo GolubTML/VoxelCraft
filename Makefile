@@ -1,6 +1,6 @@
 LIBS = -lglfw -ldl -lvulkan
 CXX = clang++
-CXXFLAGS = -std=c++17 -Wall -Iinclude -MMD -MP
+CXXFLAGS = -std=c++17 -Wall -Iinclude -Iinclude/lib/imgui -MMD -MP
 
 SRC_DIR = src
 OBJ_DIR = obj

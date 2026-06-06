@@ -9,11 +9,12 @@
 #include <game/world.hpp>
 #include <renderer/texture.hpp>
 #include <core/frustum.hpp>
-#include <stdexcept>
+#include <renderer/debugWindow.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <stdexcept>
 #include <cstring>
 #include <iostream>
 #include <array>
@@ -51,7 +52,7 @@ void Renderer::cleanup(VkDevice device)
     vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
-void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, const World& world)
+void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, DebugWindow& dW, const World& world)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -68,7 +69,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, cons
     // and now, we can record commands in buffer
     // but, we need to reset whole buffer
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, fCam, pipeline, world);
+    recordCommandBuffer(commandBuffers[currentFrame], imageIndex, fCam, pipeline, dW, world);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -124,6 +125,11 @@ VkQueue Renderer::getGraphicsQueue() const
 VkCommandPool Renderer::getCommandPool() const
 {
     return commandPool;
+}
+
+VkDescriptorPool Renderer::getDescriptionPool() const
+{
+    return descriptorPool;
 }
 
 const std::vector<VkCommandBuffer>& Renderer::getCommandBuffers() const
@@ -383,7 +389,7 @@ void Renderer::createCommandBuffers()
     }
 }
 
-void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, const World& world)
+void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, DebugWindow& dW, const World& world)
 {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -484,7 +490,7 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
         std::cout << "All chunks in memory: " << world.getChunks().size() << " Chunks renderer: " << rendererChunks << "\n";
     }
     
-
+    dW.presentWindow(buffer);
     // and finish
     vkCmdEndRenderPass(buffer);
 

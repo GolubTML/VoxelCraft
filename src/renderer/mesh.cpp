@@ -39,11 +39,6 @@ std::array<VkVertexInputAttributeDescription, 3> Vertex::getAttributeDescription
 
 void Mesh::create(Device& device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
 {
-    if (vertexBuffer.buffer != VK_NULL_HANDLE || indexBuffer.buffer != VK_NULL_HANDLE)
-    {
-        vkDeviceWaitIdle(device.getDevice());
-    }
-
     if (vertexBuffer.buffer != VK_NULL_HANDLE)
         vertexBuffer.cleanup(device.getDevice());
 

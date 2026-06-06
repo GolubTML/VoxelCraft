@@ -13,6 +13,8 @@ public:
     float sens = 0.1f;
     float FOV = 0.f;
     glm::vec2 size = glm::vec2(0.f, 0.f);
+    
+    bool firstMouse = true;
 
     Camera() { }
     Camera(glm::vec3 position, float fov, float w, float h);
@@ -25,7 +27,6 @@ public:
     glm::mat4 getCameraProjection() const;
 
 private:
-    bool firstMouse = true;
     float lastX = 0.f;
     float lastY = 0.f;
 

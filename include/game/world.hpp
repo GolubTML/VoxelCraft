@@ -46,6 +46,8 @@ public:
     void cleanup(VkDevice device);
 
     void updatePlayerPos(const glm::vec3& playerPos);
+    void uploadChunksToGpu();
+
     void generateChunks(const glm::ivec3& chunkPos);
     
     const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& getChunks() const;

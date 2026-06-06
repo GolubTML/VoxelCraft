@@ -15,6 +15,7 @@ class Camera;
 class World;
 class Texture2D;
 class Frustum;
+class DebugWindow;
 
 class Renderer
 {
@@ -25,11 +26,12 @@ public:
     // BAD. Need new architecture for this
     void createDescriptorSet(const Pipeline& pipeline, const Texture2D& texture);
 
-    void presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, const World& world);
+    void presentFrame(const Pipeline& pipeline, const Camera& camera, const Frustum& fCam, DebugWindow& dW, const World& world);
 
     VkRenderPass getRenderPass() const;
     VkQueue getGraphicsQueue() const;
     VkCommandPool getCommandPool() const;
+    VkDescriptorPool getDescriptionPool() const;
 
     const std::vector<VkCommandBuffer>& getCommandBuffers() const;
 
@@ -68,5 +70,5 @@ private:
     void createRenderPass();
     void createCommandPool(Device& device, VkSurfaceKHR surface);
     void createCommandBuffers();
-    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, const World& world);
+    void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, const Frustum& fCam, const Pipeline& pipeline, DebugWindow& dW, const World& world);
 };

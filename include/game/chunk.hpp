@@ -3,6 +3,7 @@
 #include <game/block.hpp>
 #include <glm/glm.hpp>
 #include <renderer/mesh.hpp>
+#include <vector>
 
 class Device;
 
@@ -24,4 +25,8 @@ public:
     glm::mat4 modelMatrix;
 
     Mesh mesh;
+
+    std::vector<Vertex> tempVertices;
+    std::vector<uint32_t> tempIndices;
+    bool hasNewMeshData = false;
 };

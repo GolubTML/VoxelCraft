@@ -1,15 +1,17 @@
 #include <core/engine.hpp>
 #include <stdexcept>
 #include <iostream>
-
+#include "lib/imgui/imgui.h"
 
 const uint32_t WINDOW_WIDTH = 1200;
 const uint32_t WINDOW_HEIGHT = 900;
 
 static void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    auto* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+    if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
+        return; 
 
+    auto* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
     if (camera)
         camera->mouse_callback(window, xpos, ypos);
 }
@@ -55,6 +57,8 @@ void Engine::initVulkan()
     renderer.createDescriptorSet(pipeline, testTexture);
     swapchain.createFramebuffers(device.getDevice(), renderer.getRenderPass());
     
+    debugWindow.initImGuiWindow(window, instance, device, swapchain, renderer);
+
     world = std::make_unique<World>(123412);
     world->initWorldThread(device);
 }
@@ -81,16 +85,16 @@ void Engine::mainLoop()
         glfwSetWindowTitle(window, title.c_str());
         
         glfwPollEvents();
-    
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
 
+        
         mainCamera.move(window, deltaTime);
         frustumCam.update(mainCamera.getCameraProjection() * mainCamera.getCameraView());
-
+        
         world->updatePlayerPos(mainCamera.pos);
-
-        renderer.presentFrame(pipeline, mainCamera, frustumCam, *world);
+        world->uploadChunksToGpu();
+        
+        renderer.presentFrame(pipeline, mainCamera, frustumCam, debugWindow, *world);
+        input();
     }
 
     vkDeviceWaitIdle(device.getDevice());
@@ -102,8 +106,9 @@ void Engine::cleanup()
 
     testTexture.cleanup(device);
 
-    renderer.cleanup(device.getDevice());
     world->cleanup(device.getDevice());
+    debugWindow.cleanup(device);
+    renderer.cleanup(device.getDevice());
     swapchain.cleanup(device.getDevice());
     pipeline.cleanup(device.getDevice());
 
@@ -165,6 +170,41 @@ void Engine::createInstance()
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
     {
         throw std::runtime_error("Cannot create instance!");
+    }
+}
+
+void Engine::input()
+{
+    static bool tabPressed = false;
+
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+    if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS && !tabPressed)
+    {
+        int currentMode = glfwGetInputMode(window, GLFW_CURSOR);
+
+        if (currentMode == GLFW_CURSOR_DISABLED)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            mainCamera.firstMouse = true;
+        }
+
+        tabPressed = true; 
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
+    {
+        tabPressed = false;
+    }
+
+    if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) 
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_None);
     }
 }
 

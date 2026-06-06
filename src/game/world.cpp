@@ -84,6 +84,23 @@ void World::updatePlayerPos(const glm::vec3& playerPos)
     playerChunkZ = cz;
 }
 
+void World::uploadChunksToGpu()
+{
+    std::lock_guard<std::mutex> lock(chunksMutex);
+
+    for (auto& [pos, chunk] : chunks)
+    {
+        if (chunk && chunk->hasNewMeshData)
+        {
+            chunk->mesh.create(*devicePtr, chunk->tempVertices, chunk->tempIndices);
+
+            chunk->tempVertices.clear();
+            chunk->tempIndices.clear();
+            chunk->hasNewMeshData = false;
+        }
+    }
+}
+
 void World::cleanup(VkDevice device)
 {
     isRunning = false;
@@ -422,8 +439,12 @@ void World::threadLoop()
                             if (it != chunks.end() && it->second) 
                             {
                                 if (!vertices.empty())
-                                    it->second->mesh.create(*devicePtr, vertices, indices);
-        
+                                {
+                                    it->second->tempVertices = std::move(vertices);
+                                    it->second->tempIndices = std::move(indices);
+                                    it->second->hasNewMeshData = true;
+                                }
+
                                 it->second->needUpdate = false;
                             }
                         }
