@@ -6,6 +6,16 @@
 const uint32_t WINDOW_WIDTH = 1200;
 const uint32_t WINDOW_HEIGHT = 900;
 
+unsigned int getRandomSeed() 
+{
+    // for test, it will be here
+    using namespace std::chrono;
+
+    return static_cast<unsigned int>(
+        duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
+    );
+}
+
 static void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
     if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
@@ -59,7 +69,7 @@ void Engine::initVulkan()
     
     debugWindow.initImGuiWindow(window, instance, device, swapchain, renderer);
 
-    world = std::make_unique<World>(123412);
+    world = std::make_unique<World>(getRandomSeed());
     world->initWorldThread(device);
 }
 

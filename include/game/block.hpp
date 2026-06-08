@@ -19,7 +19,8 @@ enum BlockType : uint8_t
     Flower,
     SmallGrass,
 
-    Glass
+    Glass,
+    Bedrock
 };
 
 enum BlockFace
@@ -50,4 +51,4 @@ struct BlockUV
 
 BlockUV calculateUV(int gridX, int gridY);
 BlockUV getBlockTextureUV(BlockType type, BlockFace face);
-glm::vec3 getBlockFaceColor(BlockType type, BlockFace face); // helper function. Some textures in atlas are gray, it means, thath is a mask for real texture
+uint32_t getBlockFaceColor(BlockType type, BlockFace face); // helper function. Some textures in atlas are gray, it means, thath is a mask for real texture

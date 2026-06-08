@@ -27,7 +27,7 @@ std::array<VkVertexInputAttributeDescription, 3> Vertex::getAttributeDescription
     // for color
     attributeDescription[1].binding = 0;
     attributeDescription[1].location = 1; // color
-    attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescription[1].format = VK_FORMAT_R8G8B8A8_UNORM; // now, we pack color to one uint32_t
     attributeDescription[1].offset = offsetof(Vertex, color);
     // for uv
     attributeDescription[2].binding = 0;
@@ -36,6 +36,11 @@ std::array<VkVertexInputAttributeDescription, 3> Vertex::getAttributeDescription
     attributeDescription[2].offset = offsetof(Vertex, uvPos);
 
     return attributeDescription;
+}
+
+uint32_t Vertex::packColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
 void Mesh::create(Device& device, 

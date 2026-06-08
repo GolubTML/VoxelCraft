@@ -1,4 +1,5 @@
 #include <game/block.hpp>
+#include <renderer/mesh.hpp>
 
 bool isBlockTransparent(BlockType type)
 {
@@ -75,6 +76,11 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
         return calculateUV(15, 12);
     }
 
+    case BlockType::Bedrock:
+    {
+        return calculateUV(4, 12);
+    }
+
     case BlockType::Grass:
     {
         if (face == BlockFace::TOP)
@@ -126,7 +132,7 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
     
     case BlockType::SmallGrass:
     {
-        return calculateUV(10, 15);
+        return calculateUV(20, 8);
     }
 
     case BlockType::UNKNOW:
@@ -138,7 +144,7 @@ BlockUV getBlockTextureUV(BlockType type, BlockFace face)
     }
 }
 
-glm::vec3 getBlockFaceColor(BlockType type, BlockFace face)
+uint32_t getBlockFaceColor(BlockType type, BlockFace face)
 {
     // it's bad code, but in future i will make it better
 
@@ -146,7 +152,7 @@ glm::vec3 getBlockFaceColor(BlockType type, BlockFace face)
     {
         if (face == BlockFace::TOP)
         {
-            return glm::vec3(0.43f, 1.f, 0.24f);
+            return Vertex::packColor(109, 255, 61);
         }
     }
     
@@ -154,12 +160,15 @@ glm::vec3 getBlockFaceColor(BlockType type, BlockFace face)
     {
         if (face == BlockFace::TOP)
         {
-            return glm::vec3(1.5f, 1.5f, 1.5f);
+            return Vertex::packColor(255, 255, 255);
         }
     }
 
-    if (type == BlockType::Leaves || type == BlockType::SmallGrass)
-        return glm::vec3(0.43f, 1.f, 0.24f);
+    if (type == BlockType::Leaves)
+        return Vertex::packColor(109, 255, 61);
 
-    return glm::vec3(1.f);
+    if (type == BlockType::SmallGrass)
+        return Vertex::packColor(64, 216, 64);
+
+    return Vertex::packColor(255, 255, 255);
 }

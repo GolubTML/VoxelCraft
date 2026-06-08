@@ -4,6 +4,7 @@
 #include <core/device.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <chrono>
 #include <fstream>
 #include <filesystem>
 #include <renderer/renderer.hpp>
@@ -89,6 +90,8 @@ void World::uploadChunksToGpu(const Renderer& renderer, GarbageCollector& gc, ui
 {
     std::lock_guard<std::mutex> lock(chunksMutex);
 
+    // auto startTime = std::chrono::high_resolution_clock::now();
+
     for (const auto& dead : clearQueue)
     {
         gc.pushBuffer(dead.buffer, dead.memory, currentFrame);
@@ -107,6 +110,11 @@ void World::uploadChunksToGpu(const Renderer& renderer, GarbageCollector& gc, ui
             chunk->hasNewMeshData = false;
         }
     }
+
+    // auto endTime = std::chrono::high_resolution_clock::now();
+
+    // std::chrono::duration<float, std::milli> duration = endTime - startTime;
+    // std::cout << "Time, spend to upload data to GPU: " << duration.count() << " ms." << "\n";
 }
 
 void World::cleanup(VkDevice device)
@@ -163,19 +171,40 @@ void World::generateChunks(const glm::ivec3& chunkPos)
                 generateFlowers(*newChunk, x, z);
             }
     }
-    else
-        std::cout << "Chunk loaded from memory!" << "\n";
 
     chunks[chunkPos] = std::move(newChunk);
 }
 
 std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Chunk& chunk)
 {
+    // auto startTime = std::chrono::high_resolution_clock::now();
+
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
+    Chunk* neighborXPlus = nullptr;
+    Chunk* neighborXMinus = nullptr;
+    Chunk* neighborZPlus = nullptr;
+    Chunk* neighborZMinus = nullptr;
+
+    {
+        std::lock_guard<std::mutex> lock(chunksMutex);
+
+        auto it = chunks.find(chunk.pos + glm::ivec3(1, 0, 0));
+        if (it != chunks.end()) neighborXPlus = it->second.get();
+
+        it = chunks.find(chunk.pos + glm::ivec3(-1, 0, 0));
+        if (it != chunks.end()) neighborXMinus = it->second.get();
+
+        it = chunks.find(chunk.pos + glm::ivec3(0, 0, 1));
+        if (it != chunks.end()) neighborZPlus = it->second.get();
+
+        it = chunks.find(chunk.pos + glm::ivec3(0, 0, -1));
+        if (it != chunks.end()) neighborZMinus = it->second.get();
+    }
+
     // lamda function, we will need this
-    auto addFace = [&](glm::vec3 pos, glm::vec3 color, BlockFace face, BlockUV uv)
+    auto addFace = [&](glm::vec3 pos, uint32_t color, BlockFace face, BlockUV uv)
     {
         uint32_t start = vertices.size();
 
@@ -239,7 +268,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
         });
     };
 
-    auto addCrossFaces = [&](glm::vec3 pos, glm::vec3 color, BlockUV uv)
+    auto addCrossFaces = [&](glm::vec3 pos, uint32_t color, BlockUV uv)
     {
         uint32_t start = vertices.size();
 
@@ -282,7 +311,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 if (isBlockCrossed(currentType))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::FRONT); // we dont even have defenition of face here
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::FRONT);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::FRONT);
 
                     addCrossFaces(localPos, color, uv);
                     continue;
@@ -294,56 +323,73 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 // for each face, we need check for neighbour
                 // +x axis
 
-                BlockType neighborRight = getBlockAt(globalPos + glm::ivec3(1, 0, 0));
+                // new method to find neighbor blocks
+                BlockType neighborRight = BlockType::Air;
+                if (x < Chunk::WIDTH - 1) neighborRight = chunk.blocks[x + 1][y][z].type;
+                else if (neighborXPlus) neighborRight = neighborXPlus->blocks[0][y][z].type;
+
                 if (neighborRight == BlockType::Air || (isBlockTransparent(neighborRight) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::RIGHT);
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::RIGHT);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::RIGHT);
                     addFace(localPos, color, BlockFace::RIGHT, uv);
                 }
                 
                 // -x axis
-                BlockType neighborLeft = getBlockAt(globalPos + glm::ivec3(-1, 0, 0));
+                BlockType neighborLeft = BlockType::Air;
+                if (x > 0) neighborLeft = chunk.blocks[x - 1][y][z].type;
+                else if (neighborXMinus) neighborLeft = neighborXMinus->blocks[Chunk::WIDTH - 1][y][z].type;
+
                 if (neighborLeft == BlockType::Air || (isBlockTransparent(neighborLeft) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::LEFT);
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::LEFT);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::LEFT);
                     addFace(localPos, color, BlockFace::LEFT, uv);
                 }
 
                 // +y axis
-                BlockType neighborTop = getBlockAt(globalPos + glm::ivec3(0, 1, 0));
+                BlockType neighborTop = BlockType::Air;
+                if (y < Chunk::HEIGHT - 1) neighborTop = chunk.blocks[x][y + 1][z].type;
+
                 if (neighborTop == BlockType::Air || (isBlockTransparent(neighborTop) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::TOP);
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::TOP);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::TOP);
                     addFace(localPos, color, BlockFace::TOP, uv);
                 }
 
                 // -y axis
-                BlockType neighborBottom = getBlockAt(globalPos + glm::ivec3(0, -1, 0));
+                BlockType neighborBottom = BlockType::Air;
+                if (y > 0) neighborBottom = chunk.blocks[x][y - 1][z].type;
+
                 if (neighborBottom == BlockType::Air || (isBlockTransparent(neighborBottom) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::BOTTOM);
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::BOTTOM);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::BOTTOM);
                     addFace(localPos, color, BlockFace::BOTTOM, uv);
                 }
 
                 // +z axis
-                BlockType neighborFront = getBlockAt(globalPos + glm::ivec3(0, 0, 1));
+                BlockType neighborFront = BlockType::Air;
+                if (z < Chunk::LENGTH - 1) neighborFront = chunk.blocks[x][y][z + 1].type;
+                else if (neighborZPlus) neighborFront = neighborZPlus->blocks[x][y][0].type;
+
                 if (neighborFront == BlockType::Air || (isBlockTransparent(neighborFront) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::FRONT);
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::FRONT);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::FRONT);
                     addFace(localPos, color, BlockFace::FRONT, uv);
                 }
 
                 // -z axis
-                BlockType neighborBack = getBlockAt(globalPos + glm::ivec3(0, 0, -1));
+                BlockType neighborBack = BlockType::Air;
+                if (z > 0) neighborBack = chunk.blocks[x][y][z - 1].type;
+                else if (neighborZMinus) neighborBack = neighborZMinus->blocks[x][y][Chunk::LENGTH - 1].type;
+
                 if (neighborBack == BlockType::Air || (isBlockTransparent(neighborBack) && !isBlockTransparent(currentType)))
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::BACK);
-                    glm::vec3 color = getBlockFaceColor(currentType, BlockFace::BACK);
+                    uint32_t color = getBlockFaceColor(currentType, BlockFace::BACK);
                     addFace(localPos, color, BlockFace::BACK, uv);
                 }
 
@@ -354,6 +400,13 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
         glm::vec3(chunk.pos.x * Chunk::WIDTH, 
             chunk.pos.y * Chunk::HEIGHT, 
             chunk.pos.z * Chunk::LENGTH));
+
+    // auto endTime = std::chrono::high_resolution_clock::now();
+
+    // std::chrono::duration<float, std::milli> duration = endTime - startTime;
+    // std::cout << "[Profiler] Chunk (" << chunk.pos.x << ", " << chunk.pos.y << ", " << chunk.pos.z 
+    //           << ") mesh generated in: " << duration.count() << " ms. "
+    //           << "Vertices: " << vertices.size() << "\n";
 
     return {vertices, indices};
 }
@@ -375,7 +428,7 @@ std::mutex& World::getChunkMutex() const
 
 void World::threadLoop()
 {
-    int renderRadius = 3;
+    int renderRadius = 5;
     int unloadRadius = renderRadius + 2;
 
     while (isRunning)
@@ -771,12 +824,16 @@ BlockType World::calculateBlockType(int globalX, int globalY, int globalZ)
     } 
     else 
     {
-        return BlockType::Stone;
+        if (globalY == terrainHeight)
+            return BlockType::Bedrock;
+        else
+            return BlockType::Stone;
     }
 }
 
 BlockType World::getBlockAt(const glm::ivec3& globalPos) const
 {
+    // works really slow. Need a rework
     glm::ivec3 chunkPos;
     chunkPos.x = globalPos.x >= 0 ? globalPos.x / Chunk::WIDTH  : (globalPos.x - Chunk::WIDTH + 1) / Chunk::WIDTH;
     chunkPos.y = globalPos.y >= 0 ? globalPos.y / Chunk::HEIGHT : (globalPos.y - Chunk::HEIGHT + 1) / Chunk::HEIGHT;
