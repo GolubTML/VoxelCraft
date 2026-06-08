@@ -11,25 +11,6 @@ Camera::Camera(glm::vec3 position, float fov, float w, float h)
 
 Camera::~Camera() { }
 
-void Camera::move(GLFWwindow* window, float deltaTime)
-{
-    float velocity = 8.f * deltaTime;
-
-    glm::vec3 right = glm::normalize(glm::cross(front, up));
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        pos += front * velocity;
-
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        pos -= front * velocity;
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        pos -= right * velocity;
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        pos += right * velocity;
-}
-
 void Camera::mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
     if (firstMouse)

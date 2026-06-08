@@ -3,9 +3,6 @@
 #include <iostream>
 #include "lib/imgui/imgui.h"
 
-const uint32_t WINDOW_WIDTH = 1200;
-const uint32_t WINDOW_HEIGHT = 900;
-
 unsigned int getRandomSeed() 
 {
     // for test, it will be here
@@ -21,9 +18,9 @@ static void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
         return; 
 
-    auto* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
-    if (camera)
-        camera->mouse_callback(window, xpos, ypos);
+    auto* player = static_cast<Player*>(glfwGetWindowUserPointer(window));
+    if (player)
+        player->handleMouse(window, xpos, ypos);
 }
 
 void Engine::run()
@@ -53,9 +50,9 @@ void Engine::initVulkan()
     createSurface();
     device.init(instance, surface);
     swapchain.create(device, surface, window);
-    mainCamera = Camera(glm::vec3(0.f, 65.f, 2.f), 60.f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+    player = std::make_unique<Player>(glm::vec3(0.f, 64.f, 0.f), 8.f, 60.f, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    glfwSetWindowUserPointer(window, &mainCamera);
+    glfwSetWindowUserPointer(window, player.get());
     glfwSetCursorPosCallback(window, mouse_callback);
 
     renderer.init(device, surface, &swapchain);
@@ -91,24 +88,24 @@ void Engine::mainLoop()
         
         glfwPollEvents();
 
-        mainCamera.move(window, deltaTime);
-        frustumCam.update(mainCamera.getCameraProjection() * mainCamera.getCameraView());
+        player->update(window, deltaTime);
+        frustumCam.update(player->getPlayerCamera().getCameraProjection() * player->getPlayerCamera().getCameraView());
 
         uint32_t frameIndex = renderer.getCurrentFrame();
         gc.cleanupFrame(device.getDevice(), frameIndex);
 
         DebugInfo info{};
-        info.playerPos = mainCamera.pos;
+        info.playerPos = player->getPlayerCamera().pos;
         info.chunksInMemory = world->getChunks().size();
         info.renderedChunks = renderer.getAllRendererChunks();
         info.fps = (int)(1.f / deltaTime);
         info.worldSeed = world->getWorldSeed();
         info.deltaTime = deltaTime;
 
-        world->updatePlayerPos(mainCamera.pos);
+        world->updatePlayerPos(player->getPlayerPosition());
         world->uploadChunksToGpu(renderer, gc, frameIndex);
         
-        renderer.presentFrame(pipeline, mainCamera, 
+        renderer.presentFrame(pipeline, player->getPlayerCamera(), 
             frustumCam, debugWindow, 
             *world, info);
 
@@ -210,7 +207,7 @@ void Engine::input()
         else
         {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            mainCamera.firstMouse = true;
+            player->getPlayerCamera().firstMouse = true;
         }
 
         tabPressed = true; 

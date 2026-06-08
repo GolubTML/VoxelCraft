@@ -61,6 +61,16 @@ private:
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
+
+    struct RenderJob
+    {
+        VkBuffer vertexBuffer;
+        VkBuffer indexBuffer;
+        uint32_t indexCount;
+        glm::mat4 modelMatrix;
+    };
+    
+    std::vector<RenderJob> visibleJobs;
     
     uint32_t currentFrame = 0;
     uint32_t renderedChunks = 0; // maybe bad idea

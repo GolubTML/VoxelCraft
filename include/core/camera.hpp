@@ -20,7 +20,6 @@ public:
     Camera(glm::vec3 position, float fov, float w, float h);
     ~Camera();
 
-    void move(GLFWwindow* window, float deltaTime);
     void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
     glm::mat4 getCameraView() const;

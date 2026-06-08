@@ -13,17 +13,20 @@
 #include <renderer/renderer.hpp>
 #include <core/debugger.hpp>
 #include <renderer/mesh.hpp>
-#include <core/camera.hpp>
 #include <game/world.hpp>
 #include <renderer/texture.hpp>
 #include <core/frustum.hpp>
 #include <renderer/debugWindow.hpp>
 #include <core/garbageCollector.hpp>
+#include <game/player.hpp>
 #include <memory>
 
 class Engine
 {
 public:
+    static constexpr const uint32_t WINDOW_WIDTH = 1200;
+    static constexpr const uint32_t WINDOW_HEIGHT = 900;
+
     void run();
 
 private:
@@ -39,7 +42,7 @@ private:
     // swapchain
     SwapChain swapchain;
     // camera
-    Camera mainCamera;
+    std::unique_ptr<Player> player;
     Frustum frustumCam;
     // Pipeline
     Renderer renderer;

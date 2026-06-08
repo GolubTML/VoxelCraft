@@ -461,6 +461,9 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex,
 
     vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
+    visibleJobs.clear();
+    visibleJobs.reserve(world.getChunks().size());
+    
     {
         // we added new thread, so, we should also use mutex, for sync
         std::lock_guard<std::mutex> lock(world.getChunkMutex());
@@ -475,26 +478,38 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex,
             if (!fCam.isBoxVisible(minBound, maxBound))
                 continue;
 
-            glm::mat4 modelMatrix = chunk->modelMatrix;
-            // and pushing constant to GPU
-            vkCmdPushConstants(
-                buffer,
-                pipeline.pipelineLayout,      
-                VK_SHADER_STAGE_VERTEX_BIT, 
-                0,                          
-                sizeof(glm::mat4),          
-                &modelMatrix                
+            visibleJobs.push_back(
+                { 
+                    chunk->mesh.vertexBuffer.buffer, 
+                    chunk->mesh.indexBuffer.buffer, 
+                    chunk->mesh.indexCount,
+                    chunk->modelMatrix 
+                }
             );
-
-            VkBuffer vertexBuffers[] = { chunk->mesh.vertexBuffer.buffer };
-            VkDeviceSize offsets[] = { 0 };
-            vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
-            vkCmdBindIndexBuffer(buffer, chunk->mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-            // and draw it
-            vkCmdDrawIndexed(buffer, chunk->mesh.indexCount, 1, 0, 0, 0);
-            ++renderedChunks;
         }
+    }
+
+    for (const auto& jobs : visibleJobs)
+    {
+        glm::mat4 modelMatrix = jobs.modelMatrix;
+        // and pushing constant to GPU
+        vkCmdPushConstants(
+            buffer,
+            pipeline.pipelineLayout,      
+            VK_SHADER_STAGE_VERTEX_BIT, 
+            0,                          
+            sizeof(glm::mat4),          
+            &modelMatrix                
+        );
+
+        VkBuffer vertexBuffers[] = { jobs.vertexBuffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(buffer, jobs.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+        // and draw it
+        vkCmdDrawIndexed(buffer, jobs.indexCount, 1, 0, 0, 0);
+        ++renderedChunks;
     }
     
     dW.presentWindow(buffer, info);
