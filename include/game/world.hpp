@@ -56,6 +56,9 @@ public:
     const std::map<glm::ivec3, std::unique_ptr<Chunk>, ChunkPosCompare>& getChunks() const;
     std::mutex& getChunkMutex() const;
     
+    BlockType getBlock(const glm::ivec3& globalPos) const;
+    void setBlock(const glm::ivec3& globalPos, BlockType type);
+    
 private:
     Device* devicePtr = nullptr;
     
@@ -89,7 +92,9 @@ private:
     void generateFlowers(Chunk& chunk, int x, int z);
     
     BlockType calculateBlockType(int globalX, int globalY, int globalZ);
+
     BlockType getBlockAt(const glm::ivec3& globalPos) const;
+
     BiomeType getBiomeAt(int globalX, int globalZ);
 
     int findSurfaceHight(const Chunk& chunk, int x, int z);

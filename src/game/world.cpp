@@ -850,6 +850,68 @@ BlockType World::getBlockAt(const glm::ivec3& globalPos) const
     return it->second->blocks[localX][localY][localZ].type;
 }
 
+BlockType World::getBlock(const glm::ivec3& globalPos) const
+{
+    glm::ivec3 chunkPos;
+    chunkPos.x = globalPos.x >> 4;
+    chunkPos.y = 0;
+    chunkPos.z = globalPos.z >> 4;
+
+    std::lock_guard<std::mutex> lock(chunksMutex);
+
+    auto it = chunks.find(chunkPos);
+    if (it == chunks.end())
+        return BlockType::Air;
+
+    int localX = globalPos.x & 15;
+    int localY = globalPos.y;
+    int localZ = globalPos.z & 15;
+
+    if (localY < 0 || localY >= Chunk::HEIGHT) return BlockType::Air;
+
+    return it->second->blocks[localX][localY][localZ].type;
+}
+
+void World::setBlock(const glm::ivec3& globalPos, BlockType type)
+{
+    glm::ivec3 chunkPos = { globalPos.x >> 4, 0, globalPos.z >> 4 };
+
+    std::lock_guard<std::mutex> lock(chunksMutex);
+
+    auto it = chunks.find(chunkPos);
+    if (it != chunks.end())
+    {
+        int localX = globalPos.x & 15;
+        int localY = globalPos.y;
+        int localZ = globalPos.z & 15;
+
+        it->second->blocks[localX][localY][localZ].type = type;
+        it->second->needUpdate = true; // like dirty
+
+        if (localX == 0)
+        {
+            auto neighbor = chunks.find({chunkPos.x - 1, 0, chunkPos.z});
+            if (neighbor != chunks.end()) neighbor->second->needUpdate = true;
+        }
+        else if (localX == 15)
+        {
+            auto neighbor = chunks.find({chunkPos.x + 1, 0, chunkPos.z});
+            if (neighbor != chunks.end()) neighbor->second->needUpdate = true;
+        }
+
+        if (localZ == 0)
+        {
+            auto neighbor = chunks.find({chunkPos.x, 0, chunkPos.z - 1});
+            if (neighbor != chunks.end()) neighbor->second->needUpdate = true;
+        }
+        else if (localZ == 15)
+        {
+            auto neighbor = chunks.find({chunkPos.x, 0, chunkPos.z + 1});
+            if (neighbor != chunks.end()) neighbor->second->needUpdate = true;
+        }
+    }
+}
+
 BiomeType World::getBiomeAt(int globalX, int globalZ)
 {
     float t = fnlGetNoise2D(&tempNoise, globalX, globalZ);

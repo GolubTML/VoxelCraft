@@ -88,9 +88,6 @@ void Engine::mainLoop()
         
         glfwPollEvents();
 
-        player->update(window, deltaTime);
-        frustumCam.update(player->getPlayerCamera().getCameraProjection() * player->getPlayerCamera().getCameraView());
-
         uint32_t frameIndex = renderer.getCurrentFrame();
         gc.cleanupFrame(device.getDevice(), frameIndex);
 
@@ -104,6 +101,9 @@ void Engine::mainLoop()
 
         world->updatePlayerPos(player->getPlayerPosition());
         world->uploadChunksToGpu(renderer, gc, frameIndex);
+
+        player->update(window, deltaTime, *world);
+        frustumCam.update(player->getPlayerCamera().getCameraProjection() * player->getPlayerCamera().getCameraView());
         
         renderer.presentFrame(pipeline, player->getPlayerCamera(), 
             frustumCam, debugWindow, 
