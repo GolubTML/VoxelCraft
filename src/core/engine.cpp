@@ -50,14 +50,21 @@ void Engine::initVulkan()
     createSurface();
     device.init(instance, surface);
     swapchain.create(device, surface, window);
-    player = std::make_unique<Player>(glm::vec3(0.f, 64.f, 0.f), 8.f, 60.f, WINDOW_WIDTH, WINDOW_HEIGHT);
+    player = std::make_unique<Player>(glm::vec3(0.f, 40.f, 0.f), 8.f, 90.f, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     glfwSetWindowUserPointer(window, player.get());
     glfwSetCursorPosCallback(window, mouse_callback);
 
     renderer.init(device, surface, &swapchain);
 
-    pipeline.create(swapchain, device.getDevice(), renderer.getRenderPass(), "shaders/vert.spv", "shaders/frag.spv"); 
+    pipeline.create(device.getDevice()); 
+    pipeline.graphicsPipeline = pipeline.createPipeline(swapchain, device.getDevice(), 
+        renderer.getRenderPass(),  "shaders/blocks_vert.spv", "shaders/blocks_frag.spv", 
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_POLYGON_MODE_FILL);
+
+    pipeline.wireframePipeline = pipeline.createPipeline(swapchain, device.getDevice(), 
+        renderer.getRenderPass(),  "shaders/blocks_vert.spv", "shaders/wireframe_frag.spv", 
+        VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_POLYGON_MODE_LINE);
 
     testTexture.create(device, renderer, "assets/textures/blocks/block_atlas.png");
 
@@ -68,6 +75,8 @@ void Engine::initVulkan()
 
     world = std::make_unique<World>(getRandomSeed());
     world->initWorldThread(device);
+
+    renderer.initDebugGeometry(device, gc);
 }
 
 void Engine::createSurface()
@@ -107,7 +116,7 @@ void Engine::mainLoop()
         
         renderer.presentFrame(pipeline, player->getPlayerCamera(), 
             frustumCam, debugWindow, 
-            *world, info);
+            *world, info, *player);
 
         input();
     }
@@ -120,13 +129,14 @@ void Engine::cleanup()
     Debug::destroyDebugMessenger(instance, debugMessenger);
 
     testTexture.cleanup(device);
-    gc.cleanup(device.getDevice());
-
     world->cleanup(device.getDevice());
+
     debugWindow.cleanup(device);
     renderer.cleanup(device.getDevice());
     swapchain.cleanup(device.getDevice());
     pipeline.cleanup(device.getDevice());
+
+    gc.cleanup(device.getDevice());
 
     device.cleanup();
     vkDestroySurfaceKHR(instance, surface, nullptr);

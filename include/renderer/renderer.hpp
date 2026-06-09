@@ -17,6 +17,7 @@ class World;
 class Texture2D;
 class Frustum;
 class DebugWindow;
+class Player;
 
 class Renderer
 {
@@ -29,7 +30,10 @@ public:
 
     void presentFrame(const Pipeline& pipeline, const Camera& camera, 
         const Frustum& fCam, DebugWindow& dW, 
-        const World& world, DebugInfo& info);
+        const World& world, DebugInfo& info,
+        const Player& player);
+
+    void initDebugGeometry(Device& device, GarbageCollector& gc);
 
     VkRenderPass getRenderPass() const;
     VkQueue getGraphicsQueue() const;
@@ -71,6 +75,7 @@ private:
     };
     
     std::vector<RenderJob> visibleJobs;
+    Mesh debugWireframe;
     
     uint32_t currentFrame = 0;
     uint32_t renderedChunks = 0; // maybe bad idea
@@ -89,5 +94,5 @@ private:
     void createCommandBuffers();
     void recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
         const Frustum& fCam, const Pipeline& pipeline, 
-        DebugWindow& dW, const World& world, DebugInfo& info);
+        DebugWindow& dW, const World& world, DebugInfo& info, const Player& player);
 };

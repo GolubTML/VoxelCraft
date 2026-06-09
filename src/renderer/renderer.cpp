@@ -10,6 +10,7 @@
 #include <renderer/texture.hpp>
 #include <core/frustum.hpp>
 #include <renderer/debugWindow.hpp>
+#include <game/player.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,6 +19,7 @@
 #include <cstring>
 #include <iostream>
 #include <array>
+#include <numeric>
 
 void Renderer::init(Device& device, VkSurfaceKHR surface, SwapChain* swapchain)
 {
@@ -37,6 +39,8 @@ void Renderer::cleanup(VkDevice device)
 {
     vkDeviceWaitIdle(device);
 
+    debugWireframe.cleanup(device);
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
     {
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -54,7 +58,7 @@ void Renderer::cleanup(VkDevice device)
 
 void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera, 
     const Frustum& fCam, DebugWindow& dW, 
-    const World& world, DebugInfo& info)
+    const World& world, DebugInfo& info, const Player& player)
 {
     // and here, we need to wait for fence
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -73,7 +77,7 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera,
     vkResetCommandBuffer(commandBuffers[currentFrame], 0);
     recordCommandBuffer(commandBuffers[currentFrame], imageIndex, 
         fCam, pipeline, 
-        dW, world, info);
+        dW, world, info, player);
 
     // let's submit it
     VkSubmitInfo submitInfo{};
@@ -114,6 +118,32 @@ void Renderer::presentFrame(const Pipeline& pipeline, const Camera& camera,
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void Renderer::initDebugGeometry(Device& device, GarbageCollector& gc)
+{
+    uint32_t black = Vertex::packColor(0, 0, 0, 255);
+    glm::vec2 zeroUV(0.0f, 0.0f);
+
+    glm::vec3 p0(0.0f, 0.0f, 0.0f); glm::vec3 p1(1.0f, 0.0f, 0.0f);
+    glm::vec3 p2(1.0f, 1.0f, 0.0f); glm::vec3 p3(0.0f, 1.0f, 0.0f);
+    glm::vec3 p4(0.0f, 0.0f, 1.0f); glm::vec3 p5(1.0f, 0.0f, 1.0f);
+    glm::vec3 p6(1.0f, 1.0f, 1.0f); glm::vec3 p7(0.0f, 1.0f, 1.0f);
+
+    std::vector<Vertex> vertices = 
+    {
+        {p0, black, zeroUV}, {p1, black, zeroUV}, {p1, black, zeroUV}, {p2, black, zeroUV},
+        {p2, black, zeroUV}, {p3, black, zeroUV}, {p3, black, zeroUV}, {p0, black, zeroUV},
+        {p4, black, zeroUV}, {p5, black, zeroUV}, {p5, black, zeroUV}, {p6, black, zeroUV},
+        {p6, black, zeroUV}, {p7, black, zeroUV}, {p7, black, zeroUV}, {p4, black, zeroUV},
+        {p0, black, zeroUV}, {p4, black, zeroUV}, {p1, black, zeroUV}, {p5, black, zeroUV},
+        {p2, black, zeroUV}, {p6, black, zeroUV}, {p3, black, zeroUV}, {p7, black, zeroUV}
+    };
+
+    std::vector<uint32_t> indices(24);
+    std::iota(indices.begin(), indices.end(), 0);
+
+    debugWireframe.create(device, vertices, indices, gc, 0);
 }
 
 VkRenderPass Renderer::getRenderPass() const
@@ -269,7 +299,6 @@ void Renderer::updateUniformBuffer(const Camera& camera)
     memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
 }
 
-
 void Renderer::createQueues(Device& device, VkSurfaceKHR surface)
 {
     // idk, is this good idea or not
@@ -405,7 +434,7 @@ void Renderer::createCommandBuffers()
 
 void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex, 
     const Frustum& fCam, const Pipeline& pipeline, 
-    DebugWindow& dW, const World& world, DebugInfo& info)
+    DebugWindow& dW, const World& world, DebugInfo& info, const Player& player)
 {
     renderedChunks = 0;
 
@@ -510,6 +539,27 @@ void Renderer::recordCommandBuffer(VkCommandBuffer buffer, uint32_t imageIndex,
         // and draw it
         vkCmdDrawIndexed(buffer, jobs.indexCount, 1, 0, 0, 0);
         ++renderedChunks;
+    }
+
+    const RaycastResult& result = player.getCurrentRaycast();
+
+    if (result.hit)
+    {
+        vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.wireframePipeline);
+
+        glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(result.blockPos));
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(1.002f));
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(-0.001f));
+
+        vkCmdPushConstants(buffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &modelMatrix);
+
+        VkBuffer vertexBuffers[] = { debugWireframe.vertexBuffer.buffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(buffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdBindIndexBuffer(buffer, debugWireframe.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdDraw(buffer, 24, 1, 0, 0);
     }
     
     dW.presentWindow(buffer, info);

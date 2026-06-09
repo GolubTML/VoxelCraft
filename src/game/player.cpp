@@ -20,12 +20,12 @@ void Player::update(GLFWwindow* window, float deltaTime, World& world)
         static bool rightPressed = false;
         static bool middlePressed = false;
 
+        currentRay = raycast(world, playerCamera->pos, playerCamera->front, 5.f);
+        
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !leftPressed)
         {
-            RaycastResult result = raycast(world, playerCamera->pos, playerCamera->front, 5.f);
-
-            if (result.hit)
-                world.setBlock(result.blockPos, BlockType::Air);
+            if (currentRay.hit)
+                world.setBlock(currentRay.blockPos, BlockType::Air);
 
             leftPressed = true;
         }
@@ -33,11 +33,9 @@ void Player::update(GLFWwindow* window, float deltaTime, World& world)
         
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && !rightPressed)
         {
-            RaycastResult result = raycast(world, playerCamera->pos, playerCamera->front, 5.f);
-
-            if (result.hit)
+            if (currentRay.hit)
             {
-                glm::vec3 placePos = result.blockPos + result.normal;
+                glm::vec3 placePos = currentRay.blockPos + currentRay.normal;
                 world.setBlock(placePos, currentBlock);
             }
 
@@ -47,11 +45,9 @@ void Player::update(GLFWwindow* window, float deltaTime, World& world)
 
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS && !middlePressed)
         {
-            RaycastResult result = raycast(world, playerCamera->pos, playerCamera->front, 5.f);
-
-            if (result.hit)
+            if (currentRay.hit)
             {
-                currentBlock = world.getBlock(result.blockPos);
+                currentBlock = world.getBlock(currentRay.blockPos);
             }
 
             middlePressed = true;
@@ -73,6 +69,16 @@ Camera& Player::getPlayerCamera() const
 glm::vec3& Player::getPlayerPosition()
 {
     return position;
+}
+
+BlockType Player::getCurrentBlock() const
+{
+    return currentBlock;
+}
+
+const RaycastResult& Player::getCurrentRaycast() const
+{
+    return currentRay;
 }
 
 void Player::input(GLFWwindow* window, float deltaTime)

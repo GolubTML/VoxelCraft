@@ -3,10 +3,29 @@
 #include <renderer/mesh.hpp>
 #include <stdexcept>
 
-void Pipeline::create(SwapChain& swapchain, VkDevice device, VkRenderPass renderPass, const std::string& vertPath, const std::string& fragPath)
+void Pipeline::create(VkDevice device)
 {
     createDescriptorSetLayout(device);
-    createPipeline(swapchain, device, renderPass, vertPath, fragPath);
+
+    // we need push constants to shader
+    // lets add new struct
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(glm::mat4);
+
+    // Creating pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1; // 1, because we will cast description layout
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // and now, we need to set descriptor layout here 
+    pipelineLayoutInfo.pushConstantRangeCount = 1; // because we push only model matrix 
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; 
+
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Cannot create pipeline layout");
+    }
 }
 
 void Pipeline::cleanup(VkDevice device)
@@ -14,7 +33,9 @@ void Pipeline::cleanup(VkDevice device)
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    vkDestroyPipeline(device, wireframePipeline, nullptr);
 }
 
 void Pipeline::createDescriptorSetLayout(VkDevice device)
@@ -50,10 +71,13 @@ void Pipeline::createDescriptorSetLayout(VkDevice device)
     }
 }
 
-void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPass renderPass, const std::string& vertPath, const std::string& fragPath)
+VkPipeline Pipeline::createPipeline(SwapChain& swapchain, 
+        VkDevice device, VkRenderPass renderPass, 
+        const std::string& vertPath, const std::string& fragPath,
+        VkPrimitiveTopology topology, VkPolygonMode polygonMode)
 {
-    Shader vertexShader("shaders/vert.spv", device, VK_SHADER_STAGE_VERTEX_BIT);
-    Shader fragmentShader("shaders/frag.spv", device, VK_SHADER_STAGE_FRAGMENT_BIT);
+    Shader vertexShader(vertPath, device, VK_SHADER_STAGE_VERTEX_BIT);
+    Shader fragmentShader(fragPath, device, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertexShader.getStageInfo(), fragmentShader.getStageInfo()};
 
@@ -73,7 +97,7 @@ void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPas
     // now we need to create input assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.topology = topology;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         // and here, finally view port
@@ -116,8 +140,8 @@ void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPas
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE; // if true, geometry never passes throught rasterizer state
     // and finally, polygone mode
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.lineWidth = 1.0f;
+    rasterizer.polygonMode = polygonMode;
+    rasterizer.lineWidth = 2.0f;
     rasterizer.cullMode = VK_CULL_MODE_NONE;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
@@ -160,32 +184,11 @@ void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPas
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
-    // we need push constants to shader
-    // lets add new struct
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(glm::mat4);
-
-
-    // Creating pipeline layout
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1; // 1, because we will cast description layout
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // and now, we need to set descriptor layout here 
-    pipelineLayoutInfo.pushConstantRangeCount = 1; // because we push only model matrix 
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; 
-
-    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-    {
-        throw std::runtime_error("Cannot create pipeline layout");
-    }
-
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = VK_TRUE;             
-    depthStencil.depthWriteEnable = VK_TRUE;           
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS; 
+    depthStencil.depthWriteEnable = (polygonMode == VK_POLYGON_MODE_FILL) ? VK_TRUE : VK_FALSE;           
+    depthStencil.depthCompareOp = (polygonMode == VK_POLYGON_MODE_FILL) ? VK_COMPARE_OP_LESS : VK_COMPARE_OP_LESS_OR_EQUAL; 
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.minDepthBounds = 0.0f; 
     depthStencil.maxDepthBounds = 1.0f;
@@ -213,11 +216,14 @@ void Pipeline::createPipeline(SwapChain& swapchain, VkDevice device, VkRenderPas
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; 
     pipelineInfo.basePipelineIndex = -1; 
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+    VkPipeline result = VK_NULL_HANDLE;
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &result) != VK_SUCCESS)
     {
         throw std::runtime_error("Cannot create graphics pipeline!");
     }
 
     vertexShader.cleanup(device);
     fragmentShader.cleanup(device);
+
+    return result;
 }

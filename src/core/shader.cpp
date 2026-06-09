@@ -61,7 +61,7 @@ std::vector<char> Shader::readFile(const std::string& path)
 
     if (!file.is_open()) 
     {
-        throw std::runtime_error("failed to open file!");
+        throw std::runtime_error("failed to open file");
     }
 
     size_t fileSize = (size_t)file.tellg();

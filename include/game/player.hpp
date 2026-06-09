@@ -26,11 +26,16 @@ public:
 
     Camera& getPlayerCamera() const;
     glm::vec3& getPlayerPosition();
+    BlockType getCurrentBlock() const;
+    
+    const RaycastResult& getCurrentRaycast() const;
 
 private:
     std::unique_ptr<Camera> playerCamera;
     glm::vec3 position;
     BlockType currentBlock;
+
+    RaycastResult currentRay;
     
     float speed;
     float fov; // maybe, i will move this field to settings in future
