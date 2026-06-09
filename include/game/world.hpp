@@ -98,6 +98,10 @@ private:
     BiomeType getBiomeAt(int globalX, int globalZ);
 
     int findSurfaceHight(const Chunk& chunk, int x, int z);
+    int getVertexAO(const glm::ivec3& blockPos, const glm::ivec3& normal, 
+        const glm::ivec3& edge1, const glm::ivec3& edge2,
+        const Chunk& chunk, 
+        Chunk* nXPlus, Chunk* nXMinus, Chunk* nZPlus, Chunk* nZMinus);
 
     std::vector<GarbageCollector::GarbageBuffer> clearQueue;
 };

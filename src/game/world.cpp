@@ -177,10 +177,14 @@ void World::generateChunks(const glm::ivec3& chunkPos)
 
 std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Chunk& chunk)
 {
-    // auto startTime = std::chrono::high_resolution_clock::now();
+    auto startTime = std::chrono::high_resolution_clock::now();
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+
+    // from profile log, i saw that one chunk uses +- 6000 verticies, maybe, this will help
+    vertices.reserve(5000);
+    indices.reserve(7500);
 
     Chunk* neighborXPlus = nullptr;
     Chunk* neighborXMinus = nullptr;
@@ -204,7 +208,8 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
     }
 
     // lamda function, we will need this
-    auto addFace = [&](glm::vec3 pos, uint32_t color, BlockFace face, BlockUV uv)
+    auto addFace = [&](glm::vec3 pos, uint32_t baseColor, BlockFace face, BlockUV uv, glm::ivec3 globalPos,
+        int bx, int by, int bz)
     {
         uint32_t start = vertices.size();
 
@@ -213,50 +218,106 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
         float x1 = uv.bottomRight.x;
         float y1 = uv.bottomRight.y;
 
+        glm::ivec3 normal(0);
+        std::array<glm::ivec3, 4> edges1;
+        std::array<glm::ivec3, 4> edges2;
+
+        switch (face)
+        {
+            case BlockFace::TOP:
+                normal = {0, 1, 0};
+                edges1 = { glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),  glm::ivec3(1, 0, 0),  glm::ivec3(-1, 0, 0) };
+                edges2 = { glm::ivec3(0, 0, -1), glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),  glm::ivec3(0, 0, 1)  };
+                break;
+            case BlockFace::BOTTOM: 
+                normal = {0, -1, 0};
+                edges1 = { glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),  glm::ivec3(1, 0, 0),  glm::ivec3(-1, 0, 0) };
+                edges2 = { glm::ivec3(0, 0, -1), glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),  glm::ivec3(0, 0, 1)  };
+                break;
+            case BlockFace::FRONT: 
+                normal = {0, 0, 1};
+                edges1 = { glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),  glm::ivec3(1, 0, 0),  glm::ivec3(-1, 0, 0) };
+                edges2 = { glm::ivec3(0, -1, 0), glm::ivec3(0, -1, 0), glm::ivec3(0, 1, 0),  glm::ivec3(0, 1, 0)  };
+                break;
+            case BlockFace::BACK: 
+                normal = {0, 0, -1};
+                edges1 = { glm::ivec3(-1, 0, 0), glm::ivec3(1, 0, 0),  glm::ivec3(1, 0, 0),  glm::ivec3(-1, 0, 0) };
+                edges2 = { glm::ivec3(0, -1, 0), glm::ivec3(0, -1, 0), glm::ivec3(0, 1, 0),  glm::ivec3(0, 1, 0)  };
+                break;
+            case BlockFace::LEFT: 
+                normal = {-1, 0, 0};
+                edges1 = { glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),  glm::ivec3(0, 0, 1),  glm::ivec3(0, 0, -1) };
+                edges2 = { glm::ivec3(0, -1, 0), glm::ivec3(0, -1, 0), glm::ivec3(0, 1, 0),  glm::ivec3(0, 1, 0)  };
+                break;
+            case BlockFace::RIGHT: 
+                normal = {1, 0, 0};
+                edges1 = { glm::ivec3(0, 0, -1), glm::ivec3(0, 0, 1),  glm::ivec3(0, 0, 1),  glm::ivec3(0, 0, -1) };
+                edges2 = { glm::ivec3(0, -1, 0), glm::ivec3(0, -1, 0), glm::ivec3(0, 1, 0),  glm::ivec3(0, 1, 0)  };
+                break;
+            default: break;
+        }
+
+        int ao0 = getVertexAO({bx, by, bz}, normal, edges1[0], edges2[0], chunk, neighborXPlus, neighborXMinus, neighborZPlus, neighborZMinus);
+        int ao1 = getVertexAO({bx, by, bz}, normal, edges1[1], edges2[1], chunk, neighborXPlus, neighborXMinus, neighborZPlus, neighborZMinus);
+        int ao2 = getVertexAO({bx, by, bz}, normal, edges1[2], edges2[2], chunk, neighborXPlus, neighborXMinus, neighborZPlus, neighborZMinus);
+        int ao3 = getVertexAO({bx, by, bz}, normal, edges1[3], edges2[3], chunk, neighborXPlus, neighborXMinus, neighborZPlus, neighborZMinus);
+
         switch (face)
         {
         case BlockFace::TOP:
-            vertices.push_back({pos + glm::vec3(0,1,0), color, {x1, y0}});
-            vertices.push_back({pos + glm::vec3(1,1,0), color, {x0, y0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), color, {x0, y1}});
-            vertices.push_back({pos + glm::vec3(0,1,1), color, {x1, y1}});
+        {
+            vertices.push_back({pos + glm::vec3(0,1,0), Vertex::applyColorFactor(baseColor, ao0), {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,0), Vertex::applyColorFactor(baseColor, ao1), {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), Vertex::applyColorFactor(baseColor, ao2), {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,1), Vertex::applyColorFactor(baseColor, ao3), {x1, y1}});
 
             break;
-        case BlockFace::BOTTOM:
-            vertices.push_back({pos + glm::vec3(0,0,0), color, {x1, y0}});
-            vertices.push_back({pos + glm::vec3(1,0,0), color, {x0, y0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), color, {x0, y1}});
-            vertices.push_back({pos + glm::vec3(0,0,1), color, {x1, y1}});
+        }
+        case BlockFace::BOTTOM: 
+        {
+            vertices.push_back({pos + glm::vec3(0,0,0), Vertex::applyColorFactor(baseColor, ao0), {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,0), Vertex::applyColorFactor(baseColor, ao1), {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), Vertex::applyColorFactor(baseColor, ao2), {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,0,1), Vertex::applyColorFactor(baseColor, ao3), {x1, y1}});
 
             break;
-        case BlockFace::FRONT:
-            vertices.push_back({pos + glm::vec3(0,0,1), color, {x1, y0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), color, {x0, y0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), color, {x0, y1}});
-            vertices.push_back({pos + glm::vec3(0,1,1), color, {x1, y1}});
+        }
+        case BlockFace::FRONT: 
+        {
+            vertices.push_back({pos + glm::vec3(0,0,1), Vertex::applyColorFactor(baseColor, ao0), {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), Vertex::applyColorFactor(baseColor, ao1), {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), Vertex::applyColorFactor(baseColor, ao2), {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,1), Vertex::applyColorFactor(baseColor, ao3), {x1, y1}});
             
             break;
-        case BlockFace::BACK:
-            vertices.push_back({pos + glm::vec3(0,0,0), color, {x1, y0}});
-            vertices.push_back({pos + glm::vec3(1,0,0), color, {x0, y0}});
-            vertices.push_back({pos + glm::vec3(1,1,0), color, {x0, y1}});
-            vertices.push_back({pos + glm::vec3(0,1,0), color, {x1, y1}});
+        }
+        case BlockFace::BACK: 
+        {
+            vertices.push_back({pos + glm::vec3(0,0,0), Vertex::applyColorFactor(baseColor, ao0), {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,0), Vertex::applyColorFactor(baseColor, ao1), {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,0), Vertex::applyColorFactor(baseColor, ao2), {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), Vertex::applyColorFactor(baseColor, ao3), {x1, y1}});
             
             break;
-        case BlockFace::LEFT:
-            vertices.push_back({pos + glm::vec3(0,0,0), color, {x1, y0}});
-            vertices.push_back({pos + glm::vec3(0,0,1), color, {x0, y0}});
-            vertices.push_back({pos + glm::vec3(0,1,1), color, {x0, y1}});
-            vertices.push_back({pos + glm::vec3(0,1,0), color, {x1, y1}});
+        }
+        case BlockFace::LEFT: 
+        {
+            vertices.push_back({pos + glm::vec3(0,0,0), Vertex::applyColorFactor(baseColor, ao0), {x1, y0}});
+            vertices.push_back({pos + glm::vec3(0,0,1), Vertex::applyColorFactor(baseColor, ao1), {x0, y0}});
+            vertices.push_back({pos + glm::vec3(0,1,1), Vertex::applyColorFactor(baseColor, ao2), {x0, y1}});
+            vertices.push_back({pos + glm::vec3(0,1,0), Vertex::applyColorFactor(baseColor, ao3), {x1, y1}});
 
             break;
-        case BlockFace::RIGHT:
-            vertices.push_back({pos + glm::vec3(1,0,0), color, {x1, y0}});
-            vertices.push_back({pos + glm::vec3(1,0,1), color, {x0, y0}});
-            vertices.push_back({pos + glm::vec3(1,1,1), color, {x0, y1}});
-            vertices.push_back({pos + glm::vec3(1,1,0), color, {x1, y1}});
+        }
+        case BlockFace::RIGHT: 
+        {
+            vertices.push_back({pos + glm::vec3(1,0,0), Vertex::applyColorFactor(baseColor, ao0), {x1, y0}});
+            vertices.push_back({pos + glm::vec3(1,0,1), Vertex::applyColorFactor(baseColor, ao1), {x0, y0}});
+            vertices.push_back({pos + glm::vec3(1,1,1), Vertex::applyColorFactor(baseColor, ao2), {x0, y1}});
+            vertices.push_back({pos + glm::vec3(1,1,0), Vertex::applyColorFactor(baseColor, ao3), {x1, y1}});
 
             break;
+        }
         
         default:
             break;
@@ -332,7 +393,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::RIGHT);
                     uint32_t color = getBlockFaceColor(currentType, BlockFace::RIGHT);
-                    addFace(localPos, color, BlockFace::RIGHT, uv);
+                    addFace(localPos, color, BlockFace::RIGHT, uv, globalPos, x, y, z);
                 }
                 
                 // -x axis
@@ -344,7 +405,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::LEFT);
                     uint32_t color = getBlockFaceColor(currentType, BlockFace::LEFT);
-                    addFace(localPos, color, BlockFace::LEFT, uv);
+                    addFace(localPos, color, BlockFace::LEFT, uv, globalPos, x, y, z);
                 }
 
                 // +y axis
@@ -355,7 +416,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::TOP);
                     uint32_t color = getBlockFaceColor(currentType, BlockFace::TOP);
-                    addFace(localPos, color, BlockFace::TOP, uv);
+                    addFace(localPos, color, BlockFace::TOP, uv, globalPos, x, y, z);
                 }
 
                 // -y axis
@@ -366,7 +427,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::BOTTOM);
                     uint32_t color = getBlockFaceColor(currentType, BlockFace::BOTTOM);
-                    addFace(localPos, color, BlockFace::BOTTOM, uv);
+                    addFace(localPos, color, BlockFace::BOTTOM, uv, globalPos, x, y, z);
                 }
 
                 // +z axis
@@ -378,7 +439,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::FRONT);
                     uint32_t color = getBlockFaceColor(currentType, BlockFace::FRONT);
-                    addFace(localPos, color, BlockFace::FRONT, uv);
+                    addFace(localPos, color, BlockFace::FRONT, uv, globalPos, x, y, z);
                 }
 
                 // -z axis
@@ -390,7 +451,7 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
                 {
                     BlockUV uv = getBlockTextureUV(currentType, BlockFace::BACK);
                     uint32_t color = getBlockFaceColor(currentType, BlockFace::BACK);
-                    addFace(localPos, color, BlockFace::BACK, uv);
+                    addFace(localPos, color, BlockFace::BACK, uv, globalPos, x, y, z);
                 }
 
                 #pragma endregion
@@ -401,12 +462,12 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> World::generateMeshData(Ch
             chunk.pos.y * Chunk::HEIGHT, 
             chunk.pos.z * Chunk::LENGTH));
 
-    // auto endTime = std::chrono::high_resolution_clock::now();
+    auto endTime = std::chrono::high_resolution_clock::now();
 
-    // std::chrono::duration<float, std::milli> duration = endTime - startTime;
-    // std::cout << "[Profiler] Chunk (" << chunk.pos.x << ", " << chunk.pos.y << ", " << chunk.pos.z 
-    //           << ") mesh generated in: " << duration.count() << " ms. "
-    //           << "Vertices: " << vertices.size() << "\n";
+    std::chrono::duration<float, std::milli> duration = endTime - startTime;
+    std::cout << "[Profiler] Chunk (" << chunk.pos.x << ", " << chunk.pos.y << ", " << chunk.pos.z 
+              << ") mesh generated in: " << duration.count() << " ms. "
+              << "Vertices: " << vertices.size() << "\n";
 
     return {vertices, indices};
 }
@@ -938,4 +999,47 @@ int World::findSurfaceHight(const Chunk& chunk, int x, int z)
     }
 
     return 0;
+}
+
+int World::getVertexAO(const glm::ivec3& blockPos, const glm::ivec3& normal, 
+        const glm::ivec3& edge1, const glm::ivec3& edge2,
+        const Chunk& chunk, 
+        Chunk* nXPlus, Chunk* nXMinus, Chunk* nZPlus, Chunk* nZMinus)
+{
+    // cursed bag here
+    // this method generate strange AO on every end of chunks
+    // TODO: FIX IT
+
+    auto isBlockSolid = [&](const glm::ivec3& pos) -> bool
+    {
+        if (pos.y < 0 || pos.y >= Chunk::HEIGHT) return false;
+
+        if (pos.x < 0) 
+            return nXMinus ? nXMinus->blocks[Chunk::WIDTH - 1][pos.y][pos.z].type != BlockType::Air : false;
+
+        if (pos.x >= Chunk::WIDTH) 
+            return nXPlus ? nXPlus->blocks[0][pos.y][pos.z].type != BlockType::Air : false;
+            
+        if (pos.z < 0)
+            return nZMinus ? nZMinus->blocks[pos.x][pos.y][Chunk::LENGTH - 1].type != BlockType::Air : false;
+
+        if (pos.z >= Chunk::LENGTH)
+            return nZPlus ? nZPlus->blocks[pos.x][pos.y][0].type != BlockType::Air : false;
+
+
+        return chunk.blocks[pos.x][pos.y][pos.z].type != BlockType::Air;
+    };
+
+    bool side1 = isBlockSolid(blockPos + normal + edge1);
+    bool side2 = isBlockSolid(blockPos + normal + edge2);
+    bool corner = isBlockSolid(blockPos + normal + edge1 + edge2);
+
+    if (side1 && side2)
+        return 0;
+    if ((side1 && corner) || (side2 && corner))
+        return 1;
+    if (side1 || side2 || corner)
+        return 2;
+
+    return 3;
 }

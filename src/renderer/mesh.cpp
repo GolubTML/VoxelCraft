@@ -43,6 +43,32 @@ uint32_t Vertex::packColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
+uint32_t Vertex::applyColorFactor(uint32_t color, int factor)
+{
+    float multiplier = 1.f;
+    switch (factor)
+    {
+    case 0: multiplier = 0.25f; break;
+    case 1: multiplier = 0.5f; break;
+    case 2: multiplier = 0.75f; break;
+    case 3: multiplier = 1.f; break;
+    
+    default:
+        break;
+    }
+
+    uint32_t r = color & 0xFF;
+    uint32_t g = (color >> 8) & 0xFF;
+    uint32_t b = (color >> 16) & 0xFF;
+    uint32_t a = (color >> 24) & 0xFF;
+
+    r = static_cast<uint8_t>(r * multiplier);
+    g = static_cast<uint8_t>(g * multiplier);
+    b = static_cast<uint8_t>(b * multiplier);
+
+    return (a << 24) | (b << 16) | (g << 8) | r;
+}
+
 void Mesh::create(Device& device, 
         const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
         GarbageCollector& gc, uint32_t currFrame)
