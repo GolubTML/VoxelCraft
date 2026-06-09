@@ -2,6 +2,7 @@
 
 #include <core/camera.hpp>
 #include <GLFW/glfw3.h>
+#include <game/block.hpp>
 #include <memory>
 
 // maybe, this struct shouldn't be here
@@ -29,6 +30,7 @@ public:
 private:
     std::unique_ptr<Camera> playerCamera;
     glm::vec3 position;
+    BlockType currentBlock;
     
     float speed;
     float fov; // maybe, i will move this field to settings in future

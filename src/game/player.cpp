@@ -5,6 +5,7 @@ Player::Player(glm::vec3 pos, float speed, float fov, uint32_t windowWidth, uint
     : position(pos), speed(speed), fov(fov)
 {
     playerCamera = std::make_unique<Camera>(position, fov, windowWidth, windowHeight);
+    currentBlock = BlockType::Stone;
 }
 
 Player::~Player() { /* destructor for Camera will call automaticly */ }
@@ -17,6 +18,7 @@ void Player::update(GLFWwindow* window, float deltaTime, World& world)
     {
         static bool leftPressed = false;
         static bool rightPressed = false;
+        static bool middlePressed = false;
 
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !leftPressed)
         {
@@ -36,12 +38,25 @@ void Player::update(GLFWwindow* window, float deltaTime, World& world)
             if (result.hit)
             {
                 glm::vec3 placePos = result.blockPos + result.normal;
-                world.setBlock(placePos, BlockType::Stone);
+                world.setBlock(placePos, currentBlock);
             }
 
             rightPressed = true;
         }
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE) rightPressed = false;
+
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS && !middlePressed)
+        {
+            RaycastResult result = raycast(world, playerCamera->pos, playerCamera->front, 5.f);
+
+            if (result.hit)
+            {
+                currentBlock = world.getBlock(result.blockPos);
+            }
+
+            middlePressed = true;
+        }
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_RELEASE) middlePressed = false;
     }    
 }
 
